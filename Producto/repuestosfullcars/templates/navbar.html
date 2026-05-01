@@ -1,0 +1,47 @@
+<!-- repuestosfullcars/templates/navbar.html -->
+<nav class="bg-slate-900 border-b border-slate-700 fixed w-full z-20 top-0 start-0">
+  <!-- Cambiamos p-4 por p-2 para reducir la altura total -->
+  <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-2 px-4">
+    
+    <!-- Logo más pequeño (text-xl en lugar de 2xl) -->
+    <a href="{% url 'index' %}" class="flex items-center space-x-2">
+      <span class="self-center text-xl font-bold text-white">🚗 FULL CARS</span>
+    </a>
+
+    <!-- Menú de Usuario -->
+    <div class="flex items-center md:order-2">
+      <div class="dropdown">
+        <!-- Reducimos el padding del botón (p-1.5) -->
+        <button type="button" class="flex text-sm bg-slate-800 rounded-full focus:ring-4 focus:ring-slate-600 p-1.5 text-white dropdown-toggle" id="user-menu-button" data-bs-toggle="dropdown">
+          <!-- Ícono un poco más pequeño (text-xl) -->
+          <i class="fas fa-user-circle text-xl"></i>
+        </button>
+
+        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-slate-700 mt-1">
+          {% if user.is_authenticated %}
+            <div class="px-4 py-2 text-xs border-b">
+              <span class="block font-bold text-slate-900">{{ user.username }}</span>
+            </div>
+            {% if user.is_staff %}
+              <li><a href="{% url 'admin_productos' %}" class="dropdown-item py-1.5 small"><i class="fas fa-plus-circle me-2"></i> Inventario</a></li>
+              <li><hr class="dropdown-divider"></li>
+            {% endif %}
+            <li><a href="{% url 'logout' %}" class="dropdown-item text-danger py-1.5 small"><i class="fas fa-sign-out-alt me-2"></i> Salir</a></li>
+          {% else %}
+            <li><a href="{% url 'login' %}" class="dropdown-item py-1.5 small">Iniciar Sesión</a></li>
+            <li><a href="{% url 'registro' %}" class="dropdown-item py-1.5 small">Registrarse</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Enlaces de navegación compactos -->
+    <div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1">
+      <ul class="flex flex-row space-x-6 font-medium">
+        <li><a href="{% url 'index' %}" class="block text-sm text-white hover:text-blue-500">Inicio</a></li>
+        <li><a href="#" class="block text-sm text-slate-300 hover:text-blue-500">Repuestos</a></li>
+        <li><a href="#" class="block text-sm text-slate-300 hover:text-blue-500">Contacto</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>

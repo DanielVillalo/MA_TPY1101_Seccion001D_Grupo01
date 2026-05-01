@@ -122,9 +122,20 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STATICFILES_DIRS = [
+    BASE_DIR / "repuestosfullcars" / "static",
+]
 
 import os
 
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Producto/full_cars/settings.py
+
+# URL a la que redirige tras iniciar sesión correctamente
+LOGIN_REDIRECT_URL = 'index'
+
+# URL a la que redirige tras cerrar sesión
+LOGOUT_REDIRECT_URL = 'index'

@@ -1,0 +1,130 @@
+{% extends 'repuestosfullcars/home.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="admin-header bg-primary text-white p-3 rounded-top" style="background: linear-gradient(135deg, #02807c 0%, #009199 100%) !important;">
+        <div class="d-flex justify-content-between align-items-center">
+            <h3><i class="fas fa-boxes"></i> Gestión de Inventario</h3>
+            <a href="{% url 'index' %}" class="btn btn-light btn-sm">Regresar al Home</a>
+        </div>
+        
+        <ul class="nav nav-pills nav-fill mt-3" id="adminTab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active text-white" id="list-tab" data-bs-toggle="tab" data-bs-target="#listSection" type="button">Lista de Productos</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link text-white" id="form-tab" data-bs-toggle="tab" data-bs-target="#formSection" type="button">
+                    {% if producto_edit %}Editar: {{ producto_edit.nombre_producto }}{% else %}Nuevo Producto{% endif %}
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="tab-content bg-white shadow p-4 rounded-bottom">
+        <!-- LISTADO -->
+        <div class="tab-pane fade show active" id="listSection">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Vista</th>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Stock</th>
+                        <th>Precio</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in productos %}
+                    <tr>
+                        <td>
+                            {% if p.imagen_url %}
+                                <img src="{{ p.imagen_url.url }}" width="45" height="45" class="rounded-circle" style="object-fit: cover;">
+                            {% else %}
+                                <div class="bg-light rounded-circle d-inline-block text-center" style="width:45px; height:45px; line-height:45px;">
+                                    <i class="fas fa-image text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ p.nombre_producto }}</strong></td>
+                        <td>{{ p.categoria.nombre_categoria }}</td>
+                        <td>
+                            <span class="badge {% if p.stock <= 5 %}bg-danger{% else %}bg-success{% endif %}">
+                                {{ p.stock }} uni.
+                            </span>
+                        </td>
+                        <td>${{ p.precio }}</td>
+                        <td>
+                            <a href="?edit={{ p.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-pen"></i></a>
+                            <a href="{% url 'eliminar_producto' p.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Seguro?')"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- FORMULARIO CRUD -->
+        <div class="tab-pane fade {% if producto_edit %}show active{% endif %}" id="formSection">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="producto_id" value="{{ producto_edit.id }}">
+                
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Nombre del Producto</label>
+                        <input type="text" name="nombre_producto" class="form-control" value="{{ producto_edit.nombre_producto }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Categoría</label>
+                        <select name="categoria" class="form-select" required>
+                            {% for cat in categorias %}
+                                <option value="{{ cat.id }}" {% if producto_edit.categoria.id == cat.id %}selected{% endif %}>
+                                    {{ cat.nombre_categoria }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Descripción</label>
+                        <textarea name="descripcion" class="form-control" rows="2">{{ producto_edit.descripcion }}</textarea>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Precio (CLP)</label>
+                        <input type="number" name="precio" class="form-control" value="{{ producto_edit.precio|stringformat:'d' }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Stock Inicial</label>
+                        <input type="number" name="stock" class="form-control" value="{{ producto_edit.stock }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Estado</label>
+                        <select name="estado" class="form-select">
+                            <option value="activo" {% if producto_edit.estado == 'activo' %}selected{% endif %}>Activo</option>
+                            <option value="inactivo" {% if producto_edit.estado == 'inactivo' %}selected{% endif %}>Inactivo</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Imagen del Producto</label>
+                        <input type="file" name="imagen_url" class="form-control">
+                        {% if producto_edit.imagen_url %}
+                            <small class="text-muted">Imagen actual: {{ producto_edit.imagen_url.name }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mt-4 border-top pt-3 text-end">
+                    <a href="{% url 'admin_productos' %}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-save"></i> {% if producto_edit %}Actualizar{% else %}Guardar{% endif %} Producto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+/* Animaciones */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+body {
+    background: linear-gradient(135deg, #f5f5dc 0%, #ffffff 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.register-container {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+    animation: fadeIn 0.6s ease-in;
+}
+
+.logo-section {
+    text-align: center;
+    margin-bottom: 30px;
+    animation: slideDown 0.8s ease-out;
+}
+
+.icon-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 110px;
+    height: 110px;
+    background: linear-gradient(135deg, #02807c 0%, #009199 100%);
+    border-radius: 50%;
+    box-shadow: 0 8px 32px rgba(2, 128, 124, 0.3);
+    animation: bounce 2s infinite;
+    color: white;
+    font-size: 50px;
+}
+
+.logo-section h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-top: 15px;
+}
+
+.form-section {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+.custom-input {
+    border: 2px solid rgba(2, 128, 124, 0.2) !important;
+    border-radius: 12px !important;
+    padding: 10px 15px !important;
+}
+
+.custom-input:focus {
+    border-color: #009199 !important;
+    box-shadow: 0 0 0 3px rgba(0, 145, 153, 0.1) !important;
+}
+
+.toggle-password {
+    border: 2px solid rgba(2, 128, 124, 0.2) !important;
+    border-left: none !important;
+    border-radius: 0 12px 12px 0 !important;
+    background: white !important;
+    color: #02807c !important;
+}
+
+.register-button {
+    background: linear-gradient(135deg, #02807c 0%, #009199 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    height: 50px;
+    font-weight: 600;
+    transition: 0.3s;
+    margin-top: 10px;
+}
+
+.register-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(2, 128, 124, 0.4);
+}
+
+.login-section {
+    text-align: center;
+    margin-top: 25px;
+}
+
+.login-link {
+    color: #02807c;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.login-link:hover {
+    color: #009199;
+}
