@@ -1,21 +1,36 @@
-/* Animaciones originales */
+/* Animaciones */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
+/* Estructura Global */
 body {
-    background: linear-gradient(135deg, #f5f5dc 0%, #ffffff 100%); /* Color crema */
+    background: linear-gradient(135deg, #f5f5dc 0%, #ffffff 100%);
+    margin: 0;
+    padding: 0;
+}
+
+.main-wrapper {
+    display: flex;
+    flex-direction: column;
     min-height: 100vh;
+    width: 100%;
+}
+
+.content-area {
+    flex: 1 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0;
+    width: 100%;
+    /* Quitamos el padding excesivo para que no empuje el footer fuera de vista */
+    padding: 40px 20px; 
 }
 
+/* Contenedor del Formulario */
 .login-container {
     width: 100%;
     max-width: 400px;
-    padding: 20px;
     animation: fadeIn 0.6s ease-in;
 }
 
@@ -44,7 +59,7 @@ body {
     margin-top: 15px;
 }
 
-/* Inputs con estilo Ionic */
+/* Inputs */
 .custom-input {
     border: 2px solid rgba(2, 128, 124, 0.3) !important;
     border-radius: 12px !important;
@@ -58,7 +73,6 @@ body {
     transform: translateY(-2px);
 }
 
-/* Botón de ver contraseña */
 .toggle-password-btn {
     border: 2px solid rgba(2, 128, 124, 0.3) !important;
     border-left: none !important;
@@ -66,7 +80,7 @@ body {
     color: #02807c;
 }
 
-/* Botón Principal Login */
+/* Botones */
 .login-button {
     background: linear-gradient(135deg, #02807c 0%, #009199 100%);
     color: white;
@@ -84,7 +98,19 @@ body {
     color: white;
 }
 
-/* Separador "O" */
+.register-button {
+    border: 2px solid #02807c !important;
+    color: #02807c !important;
+    border-radius: 12px !important;
+    font-weight: 600;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.3s;
+}
+
+/* Separador */
 .separator {
     display: flex;
     align-items: center;
@@ -103,31 +129,24 @@ body {
     font-weight: bold;
 }
 
-/* Botón de Registro Outline */
-.register-button {
-    border: 2px solid #02807c !important;
-    color: #02807c !important;
-    border-radius: 12px !important;
-    font-weight: 600;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: 0.3s;
-}
-
-.register-button:hover {
-    background-color: rgba(2, 128, 124, 0.1);
-    border-color: #009199 !important;
-    transform: translateY(-2px);
-}
-
 .forgot-password {
     color: #02807c;
     text-decoration: none;
     font-size: 14px;
 }
 
-.forgot-password:hover {
-    color: #009199;
+/* FUERZA EL FOOTER A SER FULL WIDTH */
+footer {
+    width: 100vw !important;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw !important;
+    margin-right: -50vw !important;
+}
+
+/* Asegura que el body no cree scroll horizontal por el truco anterior */
+body, html {
+    overflow-x: hidden;
+    width: 100%;
 }
