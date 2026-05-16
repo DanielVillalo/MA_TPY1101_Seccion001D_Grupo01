@@ -1,47 +1,182 @@
 <!-- repuestosfullcars/templates/navbar.html -->
-<nav class="bg-slate-900 border-b border-slate-700 fixed w-full z-20 top-0 start-0">
-  <!-- Cambiamos p-4 por p-2 para reducir la altura total -->
-  <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-2 px-4">
-    
-    <!-- Logo más pequeño (text-xl en lugar de 2xl) -->
-    <a href="{% url 'index' %}" class="flex items-center space-x-2">
-      <span class="self-center text-xl font-bold text-white">🚗 FULL CARS</span>
+
+<style>
+  #fc-navbar {
+    background: linear-gradient(105deg, #014d4a 0%, #02807c 45%, #009199 80%, #00a8b0 100%);
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  #fc-navbar::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  }
+
+  .fc-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 40px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+  }
+
+  /* ── Logo ── */
+  .fc-logo { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+  .fc-logo-icon {
+    width: 38px; height: 38px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fc-logo-icon i { font-size: 20px; color: #fff; }
+  .fc-logo-title {
+    font-size: 17px; font-weight: 700; color: #fff;
+    letter-spacing: 2px; line-height: 1.1;
+  }
+  .fc-logo-sub {
+    font-size: 9px; color: rgba(255,255,255,0.65);
+    letter-spacing: 3px; text-transform: uppercase;
+  }
+
+  /* ── Links ── */
+  .fc-links { display: flex; gap: 2px; }
+  .fc-links a {
+    padding: 8px 16px; border-radius: 6px;
+    font-size: 13.5px; font-weight: 500;
+    color: rgba(255,255,255,0.75);
+    text-decoration: none;
+    transition: color .2s, background .2s;
+  }
+  .fc-links a:hover  { color: #fff; background: rgba(255,255,255,0.12); }
+  .fc-links a.active { color: #fff; background: rgba(255,255,255,0.15); }
+
+  /* ── Zona derecha ── */
+  .fc-right { display: flex; align-items: center; gap: 8px; }
+
+  /* Botón "Iniciar sesión" */
+  .fc-btn-login {
+    padding: 8px 18px; border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.35);
+    color: #fff; background: transparent;
+    text-decoration: none;
+    transition: background .2s;
+  }
+  .fc-btn-login:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+  /* Botón "Registrarse" — blanco sólido, texto teal */
+  .fc-btn-register {
+    padding: 8px 18px; border-radius: 8px;
+    font-size: 13px; font-weight: 700;
+    background: #ffffff;
+    color: #02807c;
+    border: none;
+    text-decoration: none;
+    transition: background .2s, transform .2s;
+  }
+  .fc-btn-register:hover {
+    background: #e6f7f7;
+    color: #02807c;
+    transform: translateY(-1px);
+  }
+
+  /* Badge usuario autenticado */
+  .fc-user-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 14px 5px 6px;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+  .fc-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #02807c;
+  }
+  .fc-username { font-size: 13px; color: #fff; font-weight: 500; }
+
+  /* Botón admin */
+  .fc-btn-admin {
+    display: flex; align-items: center; gap: 5px;
+    padding: 7px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 500;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; text-decoration: none;
+    transition: background .2s;
+  }
+  .fc-btn-admin:hover { background: rgba(255,255,255,0.2); }
+  .fc-btn-admin i { font-size: 14px; }
+
+  /* Botón "Cerrar sesión" */
+  .fc-btn-logout {
+    padding: 7px 16px; border-radius: 8px;
+    font-size: 12.5px; font-weight: 500;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; text-decoration: none;
+    transition: background .2s;
+  }
+  .fc-btn-logout:hover { background: rgba(255,255,255,0.18); }
+
+  /* Empuja el contenido de la página hacia abajo */
+  body { padding-top: 64px; }
+</style>
+
+<nav id="fc-navbar">
+  <div class="fc-inner">
+
+    <!-- Logo -->
+    <a href="{% url 'index' %}" class="fc-logo">
+      <div class="fc-logo-icon">
+        <i class="fas fa-car"></i>
+      </div>
+      <div>
+        <div class="fc-logo-title">FULL CARS</div>
+        <div class="fc-logo-sub">Repuestos</div>
+      </div>
     </a>
 
-    <!-- Menú de Usuario -->
-    <div class="flex items-center md:order-2">
-      <div class="dropdown">
-        <!-- Reducimos el padding del botón (p-1.5) -->
-        <button type="button" class="flex text-sm bg-slate-800 rounded-full focus:ring-4 focus:ring-slate-600 p-1.5 text-white dropdown-toggle" id="user-menu-button" data-bs-toggle="dropdown">
-          <!-- Ícono un poco más pequeño (text-xl) -->
-          <i class="fas fa-user-circle text-xl"></i>
-        </button>
-
-        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-slate-700 mt-1">
-          {% if user.is_authenticated %}
-            <div class="px-4 py-2 text-xs border-b">
-              <span class="block font-bold text-slate-900">{{ user.username }}</span>
-            </div>
-            {% if user.is_staff %}
-              <li><a href="{% url 'admin_productos' %}" class="dropdown-item py-1.5 small"><i class="fas fa-plus-circle me-2"></i> Inventario</a></li>
-              <li><hr class="dropdown-divider"></li>
-            {% endif %}
-            <li><a href="{% url 'logout' %}" class="dropdown-item text-danger py-1.5 small"><i class="fas fa-sign-out-alt me-2"></i> Salir</a></li>
-          {% else %}
-            <li><a href="{% url 'login' %}" class="dropdown-item py-1.5 small">Iniciar Sesión</a></li>
-            <li><a href="{% url 'registro' %}" class="dropdown-item py-1.5 small">Registrarse</a></li>
-          {% endif %}
-        </ul>
-      </div>
+    <!-- Links centrales -->
+    <div class="fc-links">
+      <a href="{% url 'index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">Inicio</a>
+      <a href="#">Repuestos</a>
+      <a href="#">Contacto</a>
     </div>
 
-    <!-- Enlaces de navegación compactos -->
-    <div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1">
-      <ul class="flex flex-row space-x-6 font-medium">
-        <li><a href="{% url 'index' %}" class="block text-sm text-white hover:text-blue-500">Inicio</a></li>
-        <li><a href="#" class="block text-sm text-slate-300 hover:text-blue-500">Repuestos</a></li>
-        <li><a href="#" class="block text-sm text-slate-300 hover:text-blue-500">Contacto</a></li>
-      </ul>
+    <!-- Derecha: sesión -->
+    <div class="fc-right">
+      {% if user.is_authenticated %}
+
+        {% if user.is_staff %}
+          <a href="{% url 'admin_productos' %}" class="fc-btn-admin">
+            <i class="fas fa-boxes"></i> Inventario
+          </a>
+        {% endif %}
+
+        <div class="fc-user-badge">
+          <div class="fc-avatar">{{ user.username|slice:":2"|upper }}</div>
+          <span class="fc-username">{{ user.username }}</span>
+        </div>
+
+        <a href="{% url 'logout' %}" class="fc-btn-logout">Cerrar sesión</a>
+
+      {% else %}
+
+        <a href="{% url 'login' %}" class="fc-btn-login">Iniciar sesión</a>
+        <a href="{% url 'registro' %}" class="fc-btn-register">Registrarse</a>
+
+      {% endif %}
     </div>
+
   </div>
 </nav>
