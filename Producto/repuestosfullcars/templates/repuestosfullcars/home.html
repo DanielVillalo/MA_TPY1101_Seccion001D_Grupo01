@@ -1,44 +1,285 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
-    <div class="text-center mb-5">
-        <h2 class="fw-bold" style="color: #1a1a1a;">Catálogo de Repuestos</h2>
-        <div class="mx-auto" style="height: 4px; width: 50px; background: var(--primary-teal); border-radius: 2px;"></div>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800&display=swap');
+
+  .menu-hero {
+    background: linear-gradient(135deg, #0a2a2a 0%, #02807c 60%, #009199 100%);
+    border-radius: 20px;
+    padding: 36px 40px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .menu-hero::before {
+    content: ''; position: absolute;
+    top: -60px; right: -60px;
+    width: 280px; height: 280px;
+    background: rgba(255,255,255,0.04); border-radius: 50%;
+  }
+  .menu-hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.6rem; letter-spacing: 3px;
+    color: white; margin-bottom: 4px; line-height: 1;
+  }
+  .menu-hero p {
+    font-family: 'Nunito', sans-serif;
+    color: rgba(255,255,255,0.7); font-size: 0.9rem; margin: 0;
+  }
+  .gear-icon {
+    font-size: 4.5rem; color: rgba(255,255,255,0.07);
+    position: absolute; right: 48px; top: 50%; transform: translateY(-50%);
+  }
+
+  .categoria-section { margin-bottom: 40px; }
+
+  .categoria-header {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 14px;
+  }
+  .categoria-titulo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.35rem; letter-spacing: 2px;
+    color: #1a1a1a; display: flex; align-items: center; gap: 10px;
+  }
+  .categoria-titulo::before {
+    content: ''; display: inline-block;
+    width: 5px; height: 22px;
+    background: linear-gradient(to bottom, #02807c, #009199);
+    border-radius: 3px;
+  }
+  .ver-todos-btn {
+    font-family: 'Nunito', sans-serif; font-size: 0.76rem; font-weight: 700;
+    color: #02807c; border: 2px solid #02807c; border-radius: 20px;
+    padding: 3px 14px; text-decoration: none !important; transition: all 0.25s;
+  }
+  .ver-todos-btn:hover { background: #02807c; color: white; }
+
+  /* Carrusel */
+  .carrusel-wrapper { position: relative; }
+  .carrusel-track-outer { overflow: hidden; }
+  .carrusel-track {
+    display: flex; gap: 16px;
+    transition: transform 0.42s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    padding-bottom: 4px; /* para que no se corte la sombra */
+  }
+
+  /* ── Tarjeta compacta ── */
+  .producto-card {
+    flex: 0 0 200px;
+    width: 200px;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transition: transform 0.3s, box-shadow 0.3s;
+    display: flex; flex-direction: column;
+  }
+  .producto-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 28px rgba(2,128,124,0.2);
+  }
+
+  .producto-img-wrap {
+    position: relative; height: 130px;
+    background: #eef6f6; overflow: hidden;
+  }
+  .producto-img-wrap img {
+    width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s;
+  }
+  .producto-card:hover .producto-img-wrap img { transform: scale(1.07); }
+
+  .producto-badge {
+    position: absolute; top: 8px; left: 8px;
+    background: linear-gradient(135deg, #02807c, #009199);
+    color: white; font-family: 'Nunito', sans-serif;
+    font-size: 0.58rem; font-weight: 800;
+    padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .producto-stock-badge {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(255,255,255,0.93); color: #02807c;
+    font-family: 'Nunito', sans-serif; font-size: 0.58rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px;
+  }
+  .producto-stock-badge.sin-stock { color: #e74c3c; }
+
+  .producto-body {
+    padding: 12px 14px 14px;
+    display: flex; flex-direction: column; flex: 1;
+  }
+  .producto-nombre {
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 0.86rem; color: #1a1a1a; margin-bottom: 2px; line-height: 1.3;
+    /* cortar a 2 líneas */
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .producto-desc {
+    font-family: 'Nunito', sans-serif; font-size: 0.7rem;
+    color: #aaa; margin-bottom: 8px;
+    display: -webkit-box; -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .producto-precio {
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem;
+    color: #02807c; letter-spacing: 1px; margin-bottom: 10px;
+  }
+  .producto-precio sup {
+    font-family: 'Nunito', sans-serif; font-size: 0.75rem;
+    font-weight: 700; vertical-align: super;
+  }
+  .btn-carrito {
+    background: linear-gradient(135deg, #02807c, #009199);
+    color: white !important; border: none; border-radius: 10px;
+    font-family: 'Nunito', sans-serif; font-weight: 700;
+    font-size: 0.75rem; padding: 8px 6px;
+    width: 100%; cursor: pointer; transition: all 0.25s;
+    box-shadow: 0 3px 10px rgba(2,128,124,0.22); margin-top: auto;
+  }
+  .btn-carrito:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 18px rgba(2,128,124,0.38);
+  }
+
+  /* Flechas */
+  .carrusel-nav { display: flex; gap: 6px; align-items: center; }
+  .nav-arrow {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 2px solid #02807c; background: white; color: #02807c;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 0.72rem; transition: all 0.2s; flex-shrink: 0;
+  }
+  .nav-arrow:hover { background: #02807c; color: white; }
+  .nav-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+
+  .placeholder-img {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #e4f2f2, #cce9e9);
+  }
+  .placeholder-img i { font-size: 2.2rem; color: #02807c; opacity: 0.3; }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: #bbb; font-family: 'Nunito', sans-serif;
+  }
+  .empty-state i { font-size: 2.8rem; margin-bottom: 10px; display: block; }
+
+  .categoria-divider {
+    height: 1px;
+    background: linear-gradient(to right, #ddd, transparent);
+    margin-bottom: 40px;
+  }
+</style>
+
+<!-- Hero -->
+<div class="menu-hero">
+  <h1>Catálogo de<br>Repuestos</h1>
+  <p>Calidad garantizada para tu vehículo</p>
+  <i class="fas fa-cog gear-icon fa-spin" style="animation-duration: 10s;"></i>
+</div>
+
+{% if categorias_con_productos %}
+  {% for cat_data in categorias_con_productos %}
+  <div class="categoria-section">
+
+    <div class="categoria-header">
+      <div class="categoria-titulo">{{ cat_data.categoria.nombre_categoria }}</div>
+      <div class="d-flex align-items-center gap-2">
+        <div class="carrusel-nav">
+          <button class="nav-arrow" onclick="moverCarrusel('cat-{{ cat_data.categoria.id }}', -1)" id="prev-cat-{{ cat_data.categoria.id }}">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="nav-arrow" onclick="moverCarrusel('cat-{{ cat_data.categoria.id }}', 1)" id="next-cat-{{ cat_data.categoria.id }}">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+        <a href="?categoria={{ cat_data.categoria.id }}" class="ver-todos-btn">
+          Ver todos <i class="fas fa-arrow-right ms-1" style="font-size:0.65rem;"></i>
+        </a>
+      </div>
     </div>
 
-    <div class="row">
-        {% for p in productos %}
-        <div class="col-md-4 mb-4">
-            <div class="card h-100 custom-card bg-white">
-                <div class="position-relative">
-                    {% if p.imagen_url %}
-                        <img src="{{ p.imagen_url.url }}" class="card-img-top" alt="{{ p.nombre_producto }}" style="height: 220px; object-fit: cover; border-radius: 20px 20px 0 0;">
-                    {% else %}
-                        <img src="https://via.placeholder.com/300x220" class="card-img-top" alt="Sin imagen" style="border-radius: 20px 20px 0 0;">
-                    {% endif %}
-                </div>
-                
-                <div class="card-body text-center d-flex flex-column">
-                    <h5 class="card-title fw-bold">{{ p.nombre_producto }}</h5>
-                    <p class="text-muted small">{{ p.categoria.nombre_categoria }}</p>
-                    
-                    <!-- Precio en color turquesa -->
-                    <p class="fs-4 fw-bold mb-3" style="color: var(--primary-teal);">${{ p.precio }}</p>
-                    
-                    <div class="mt-auto">
-                        <button class="btn btn-custom w-100 py-2">
-                            <i class="fas fa-cart-plus me-2"></i>Añadir al Carrito
-                        </button>
-                    </div>
-                </div>
+    <div class="carrusel-wrapper">
+      <div class="carrusel-track-outer">
+        <div class="carrusel-track" id="track-cat-{{ cat_data.categoria.id }}">
+          {% for p in cat_data.productos %}
+          <div class="producto-card">
+            <div class="producto-img-wrap">
+              {% if p.imagen_url %}
+                <img src="{{ p.imagen_url.url }}" alt="{{ p.nombre_producto }}">
+              {% else %}
+                <div class="placeholder-img"><i class="fas fa-wrench"></i></div>
+              {% endif %}
+              <span class="producto-badge">{{ cat_data.categoria.nombre_categoria }}</span>
+              {% if p.stock > 0 %}
+                <span class="producto-stock-badge"><i class="fas fa-check-circle me-1"></i>Stock</span>
+              {% else %}
+                <span class="producto-stock-badge sin-stock"><i class="fas fa-times-circle me-1"></i>Sin stock</span>
+              {% endif %}
             </div>
+            <div class="producto-body">
+              <div class="producto-nombre">{{ p.nombre_producto }}</div>
+              <div class="producto-desc">{{ p.descripcion|truncatechars:45 }}</div>
+              <div class="producto-precio"><sup>$</sup>{{ p.precio }}</div>
+              <button class="btn-carrito">
+                <i class="fas fa-cart-plus me-1"></i>Añadir al Carrito
+              </button>
+            </div>
+          </div>
+          {% endfor %}
         </div>
-        {% empty %}
-        <div class="col-12 text-center py-5">
-            <p class="text-muted">No hay repuestos disponibles en este momento.</p>
-        </div>
-        {% endfor %}
+      </div>
     </div>
-</div>
+
+  </div>
+  {% if not forloop.last %}<div class="categoria-divider"></div>{% endif %}
+  {% endfor %}
+
+{% else %}
+  <div class="empty-state">
+    <i class="fas fa-box-open"></i>
+    <p>No hay productos disponibles en este momento.</p>
+  </div>
+{% endif %}
+
+<script>
+  const carruselState = {};
+  const CARD_WIDTH = 200;
+  const CARD_GAP = 16;
+  const VISIBLES = 4; // cuántas tarjetas se ven a la vez
+
+  function moverCarrusel(id, direccion) {
+    const track = document.getElementById('track-' + id);
+    if (!track) return;
+
+    const totalCards = track.querySelectorAll('.producto-card').length;
+    if (!carruselState[id]) carruselState[id] = 0;
+
+    const maxIndex = Math.max(0, totalCards - VISIBLES);
+    carruselState[id] = Math.max(0, Math.min(carruselState[id] + direccion, maxIndex));
+
+    track.style.transform = `translateX(-${carruselState[id] * (CARD_WIDTH + CARD_GAP)}px)`;
+
+    const prevBtn = document.getElementById('prev-' + id);
+    const nextBtn = document.getElementById('next-' + id);
+    if (prevBtn) prevBtn.disabled = carruselState[id] === 0;
+    if (nextBtn) nextBtn.disabled = carruselState[id] >= maxIndex;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.carrusel-track').forEach(track => {
+      const id = track.id.replace('track-', '');
+      const total = track.querySelectorAll('.producto-card').length;
+      const prevBtn = document.getElementById('prev-' + id);
+      const nextBtn = document.getElementById('next-' + id);
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = total <= VISIBLES;
+    });
+  });
+</script>
+
 {% endblock %}

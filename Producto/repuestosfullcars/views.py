@@ -7,8 +7,28 @@ from .models import Producto, Categoria
 # --- VISTAS PÚBLICAS ---
 
 def index(request):
-    productos = Producto.objects.all()
-    return render(request, 'repuestosfullcars/home.html', {'productos': productos})
+    categorias = Categoria.objects.all()
+    categorias_con_productos = []
+
+    categoria_filtro = request.GET.get('categoria')
+
+    for cat in categorias:
+        if categoria_filtro:
+            productos = Producto.objects.filter(
+                categoria=cat
+            ) if str(cat.id) == categoria_filtro else []
+        else:
+            productos = Producto.objects.filter(categoria=cat)
+
+        if productos:
+            categorias_con_productos.append({
+                'categoria': cat,
+                'productos': list(productos)
+            })
+
+    return render(request, 'repuestosfullcars/home.html', {
+        'categorias_con_productos': categorias_con_productos
+    })
 
 def registro(request):
     if request.method == 'POST':
