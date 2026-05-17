@@ -75,6 +75,15 @@
                 </div>
 
                 <button type="submit" class="login-button w-100 mt-4">Iniciar Sesión</button>
+
+                <!-- Link olvidé mi contraseña -->
+                <div class="text-center mt-2">
+                    <a href="{% url 'password_reset' %}" 
+                       style="color: #666; font-size: 0.85rem; text-decoration: none;">
+                        ¿Olvidaste tu contraseña?
+                    </a>
+                </div>
+
             </form>
 
             <div class="separator"><span>o</span></div>
