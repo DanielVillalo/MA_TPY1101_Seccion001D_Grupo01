@@ -5,70 +5,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro - Full Cars</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="{% static 'css/registro.css' %}">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+
+    <style>
+        body {
+            background-color: #f5f5dc;
+            margin: 0;
+        }
+        .main-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .content-area {
+            flex: 1 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 100px 0 50px 0;
+        }
+        footer {
+            width: 100%;
+            flex-shrink: 0;
+        }
+    </style>
 </head>
 <body>
 
-<div class="register-container">
-    <div class="logo-section">
-        <div class="icon-circle">
-            <i class="fas fa-user-plus"></i>
-        </div>
-        <h1>Únete a RepuestosFullCars</h1>
-        <p>Crea tu cuenta en segundos</p>
-    </div>
+<div class="main-wrapper">
+    {% include 'navbar.html' %}
 
-    <!-- El método POST y el csrf_token son obligatorios para guardar datos -->
-    <form class="form-section" method="POST">
-        {% csrf_token %}
-        
-        <!-- Mensajes de error de Django (ej: usuario ya existe) -->
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-danger p-2 small">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
+    <div class="content-area">
+        <div class="login-container">
+            <div class="logo-section">
+                <div class="icon-circle">
+                    <i class="fas fa-user-plus" style="font-size: 50px; color: white;"></i>
+                </div>
+                <h1>Repuestos Full Cars</h1>
+                <p>Crea tu cuenta en segundos</p>
+            </div>
 
-        <div class="custom-input-group mb-3">
-            <label class="form-label fw-bold">Nombre de Usuario</label>
-            <input type="text" name="username" class="form-control custom-input" placeholder="Ej: dani_v" required>
-        </div>
+            <form class="form-section" method="POST">
+                {% csrf_token %}
 
-        <div class="custom-input-group mb-3">
-            <label class="form-label fw-bold">Correo electrónico</label>
-            <input type="email" name="email" class="form-control custom-input" placeholder="ejemplo@correo.com" required>
-        </div>
+            {% if messages %}
+                {% for message in messages %}
+                    {% if message.tags == 'error' %}
+                        <div class="alert alert-danger p-2 small">{{ message }}</div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
 
-        <div class="custom-input-group mb-3">
-            <label class="form-label fw-bold">Contraseña</label>
-            <div class="input-group">
-                <input type="password" name="password" id="pass1" class="form-control custom-input" placeholder="Mínimo 6 caracteres" required>
-                <button class="btn btn-outline-secondary toggle-password" type="button" onclick="toggle('pass1', 'icon1')">
-                    <i class="far fa-eye" id="icon1"></i>
-                </button>
+                <div class="custom-input-group">
+                    <label class="form-label fw-bold">Nombre de Usuario</label>
+                    <input type="text" name="username" class="form-control custom-input" placeholder="Ej: dani_v" required>
+                </div>
+
+                <div class="custom-input-group mt-3">
+                    <label class="form-label fw-bold">Correo electrónico</label>
+                    <input type="email" name="email" class="form-control custom-input" placeholder="ejemplo@correo.com" required>
+                </div>
+
+                <div class="custom-input-group mt-3">
+                    <label class="form-label fw-bold">Contraseña</label>
+                    <div class="input-group">
+                        <input type="password" name="password" id="pass1" class="form-control custom-input" placeholder="Mínimo 6 caracteres" required>
+                        <button class="btn btn-outline-secondary" type="button" onclick="toggle('pass1', 'icon1')">
+                            <i class="far fa-eye" id="icon1"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="custom-input-group mt-3">
+                    <label class="form-label fw-bold">Confirmar contraseña</label>
+                    <div class="input-group">
+                        <input type="password" name="confirmPassword" id="pass2" class="form-control custom-input" placeholder="Repite tu contraseña" required>
+                        <button class="btn btn-outline-secondary" type="button" onclick="toggle('pass2', 'icon2')">
+                            <i class="far fa-eye" id="icon2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="login-button w-100 mt-4">Crear Cuenta</button>
+            </form>
+
+            <div class="separator"><span>o</span></div>
+
+            <div class="register-section">
+                <p>¿Ya tienes cuenta?</p>
+                <a href="{% url 'login' %}" class="btn register-button w-100">Iniciar Sesión</a>
             </div>
         </div>
-
-        <div class="custom-input-group mb-3">
-            <label class="form-label fw-bold">Confirmar contraseña</label>
-            <div class="input-group">
-                <input type="password" name="confirmPassword" id="pass2" class="form-control custom-input" placeholder="Repite tu contraseña" required>
-                <button class="btn btn-outline-secondary toggle-password" type="button" onclick="toggle('pass2', 'icon2')">
-                    <i class="far fa-eye" id="icon2"></i>
-                </button>
-            </div>
-        </div>
-
-        <button type="submit" class="register-button w-100">
-            Crear Cuenta
-        </button>
-    </form>
-
-    <div class="login-section">
-        <p>¿Ya tienes cuenta?</p>
-        <a href="{% url 'login' %}" class="login-link">Iniciar Sesión</a>
     </div>
 </div>
 
@@ -81,10 +112,10 @@
             icon.classList.replace('fa-eye', 'fa-eye-slash');
         } else {
             input.type = 'password';
-            icon.classList.replace('fa-eye', 'fa-eye-slash');
             icon.classList.replace('fa-eye-slash', 'fa-eye');
         }
     }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
