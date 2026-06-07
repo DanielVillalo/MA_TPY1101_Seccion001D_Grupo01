@@ -116,6 +116,7 @@
   }
   .fc-btn-admin:hover { background: rgba(255,255,255,0.2); }
   .fc-btn-admin i { font-size: 14px; }
+  .fc-nav-icon { justify-content: center; min-width: 38px; padding: 7px 10px; }
 
   /* Botón "Cerrar sesión" */
   .fc-btn-logout {
@@ -127,9 +128,18 @@
     transition: background .2s;
   }
   .fc-btn-logout:hover { background: rgba(255,255,255,0.18); }
+  .fc-logout-form { margin: 0; }
 
   /* Empuja el contenido de la página hacia abajo */
   body { padding-top: 64px; }
+
+  @media (max-width: 768px) {
+    .fc-inner { padding: 0 16px; }
+    .fc-links, .fc-user-badge { display: none; }
+    .fc-btn-logout { padding: 7px 10px; }
+    .fc-btn-admin { padding: 7px 10px; }
+    .fc-btn-admin .fc-admin-label { display: none; }
+  }
 </style>
 
 <nav id="fc-navbar">
@@ -149,8 +159,8 @@
     <!-- Links centrales -->
     <div class="fc-links">
       <a href="{% url 'index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">Inicio</a>
-      <a href="#">Repuestos</a>
-      <a href="#">Contacto</a>
+      <a href="{% url 'index' %}">Repuestos</a>
+      <a href="#fc-footer">Contacto</a>
     </div>
 
     <!-- Derecha: sesión -->
@@ -159,16 +169,29 @@
 
         {% if user.is_staff %}
           <a href="{% url 'admin_productos' %}" class="fc-btn-admin">
-            <i class="fas fa-boxes"></i> Inventario
+            <i class="fas fa-boxes"></i> <span class="fc-admin-label">Inventario</span>
+          </a>
+          <a href="{% url 'admin_compras' %}" class="fc-btn-admin fc-nav-icon" aria-label="Pedidos" title="Pedidos">
+            <i class="fas fa-clipboard-list"></i>
           </a>
         {% endif %}
+
+        <a href="{% url 'carrito' %}" class="fc-btn-admin fc-nav-icon" aria-label="Carrito" title="Carrito">
+          <i class="fas fa-shopping-cart"></i> {{ carrito_cantidad }}
+        </a>
+        <a href="{% url 'mis_compras' %}" class="fc-btn-admin fc-nav-icon" aria-label="Mis pedidos" title="Mis pedidos">
+          <i class="fas fa-receipt"></i>
+        </a>
 
         <div class="fc-user-badge">
           <div class="fc-avatar">{{ user.username|slice:":2"|upper }}</div>
           <span class="fc-username">{{ user.username }}</span>
         </div>
 
-        <a href="{% url 'logout' %}" class="fc-btn-logout">Cerrar sesión</a>
+        <form method="POST" action="{% url 'logout' %}" class="fc-logout-form">
+          {% csrf_token %}
+          <button type="submit" class="fc-btn-logout">Cerrar sesión</button>
+        </form>
 
       {% else %}
 

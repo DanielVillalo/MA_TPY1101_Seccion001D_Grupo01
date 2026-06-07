@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Categorías - Full Cars{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="text-white p-3 rounded-top" style="background:linear-gradient(135deg,#02807c 0%,#009199 100%);">
+    <div class="d-flex justify-content-between align-items-center">
+      <h3><i class="fas fa-tags"></i> Gestión de Categorías</h3>
+      <a href="{% url 'admin_productos' %}" class="btn btn-light btn-sm">Inventario</a>
+    </div>
+  </div>
+  <div class="bg-white shadow p-4 rounded-bottom">
+    {% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}{% endif %}
+    <div class="row g-4">
+      <div class="col-md-7">
+        <table class="table align-middle">
+          <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+          {% for categoria in categorias %}
+            <tr>
+              <td>{{ categoria.nombre_categoria }}</td>
+              <td><span class="badge {% if categoria.estado == 'activo' %}bg-success{% else %}bg-secondary{% endif %}">{{ categoria.estado }}</span></td>
+              <td><a href="?edit={{ categoria.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-pen"></i></a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="col-md-5">
+        <h5>{% if categoria_edit %}Editar categoría{% else %}Nueva categoría{% endif %}</h5>
+        <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="categoria_id" value="{{ categoria_edit.id }}">
+          <label class="form-label fw-bold mt-2">Nombre</label>
+          <input type="text" name="nombre_categoria" value="{{ categoria_edit.nombre_categoria }}" class="form-control" required>
+          <label class="form-label fw-bold mt-2">Descripción</label>
+          <textarea name="descripcion" class="form-control" rows="3">{{ categoria_edit.descripcion }}</textarea>
+          <label class="form-label fw-bold mt-2">Estado</label>
+          <select name="estado" class="form-select">
+            <option value="activo" {% if categoria_edit.estado == 'activo' %}selected{% endif %}>Activo</option>
+            <option value="inactivo" {% if categoria_edit.estado == 'inactivo' %}selected{% endif %}>Inactivo</option>
+          </select>
+          <button type="submit" class="btn btn-success mt-3"><i class="fas fa-save"></i> Guardar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -4,6 +4,7 @@ set -o errexit
 pip install -r requirements.txt
 python manage.py collectstatic --no-input
 python manage.py migrate
+python manage.py seed_categories
 
 # Crear superusuario automáticamente si está definido
 if [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then

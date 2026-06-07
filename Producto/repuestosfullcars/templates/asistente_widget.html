@@ -1,0 +1,178 @@
+<style>
+  #fc-assistant {
+    position: fixed; right: 22px; bottom: 22px; z-index: 120;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .fc-assistant-toggle {
+    width: 58px; height: 58px; border: 0; border-radius: 50%;
+    background: linear-gradient(135deg, #02807c, #00a8b0);
+    color: #fff; box-shadow: 0 8px 22px rgba(2,128,124,.38);
+    font-size: 22px; transition: transform .2s, box-shadow .2s;
+  }
+  .fc-assistant-toggle:hover {
+    transform: translateY(-3px); box-shadow: 0 12px 28px rgba(2,128,124,.48);
+  }
+  .fc-assistant-panel {
+    display: none; width: min(350px, calc(100vw - 32px));
+    margin-bottom: 12px; border-radius: 18px; overflow: hidden;
+    background: #fff; box-shadow: 0 16px 42px rgba(0,0,0,.2);
+    border: 1px solid rgba(2,128,124,.15);
+  }
+  .fc-assistant-panel.open { display: block; animation: fcAssistantIn .2s ease-out; }
+  @keyframes fcAssistantIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fc-assistant-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; color: #fff;
+    background: linear-gradient(135deg, #014d4a, #02807c 70%, #009199);
+  }
+  .fc-assistant-title { display: flex; gap: 10px; align-items: center; }
+  .fc-assistant-title i { font-size: 19px; }
+  .fc-assistant-title strong { display: block; font-size: 14px; }
+  .fc-assistant-title small { display: block; font-size: 11px; opacity: .72; }
+  .fc-assistant-close { color: #fff; background: transparent; border: 0; opacity: .8; }
+  .fc-assistant-body {
+    height: 285px; overflow-y: auto; padding: 14px;
+    background: linear-gradient(135deg, #f6fbfb, #fff);
+  }
+  .fc-assistant-message {
+    width: fit-content; max-width: 88%; margin-bottom: 9px;
+    padding: 9px 11px; border-radius: 13px; font-size: 12.5px; line-height: 1.45;
+  }
+  .fc-assistant-message.bot {
+    color: #264544; background: #e8f5f4; border-bottom-left-radius: 4px;
+  }
+  .fc-assistant-message.user {
+    color: #fff; background: #02807c; border-bottom-right-radius: 4px; margin-left: auto;
+  }
+  .fc-assistant-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+  .fc-assistant-chip {
+    padding: 5px 9px; border: 1px solid rgba(2,128,124,.35); border-radius: 16px;
+    color: #02807c; background: #fff; font-size: 11px; transition: background .2s;
+  }
+  .fc-assistant-chip:hover { background: #e8f5f4; }
+  .fc-assistant-product {
+    display: block; padding: 8px 9px; margin: 6px 0; border-radius: 10px;
+    color: #174c4a; background: #fff; border: 1px solid #d8eceb; font-size: 12px;
+  }
+  .fc-assistant-product strong { display: block; }
+  .fc-assistant-product span { color: #02807c; font-weight: 600; }
+  .fc-assistant-form {
+    display: flex; gap: 7px; padding: 10px; border-top: 1px solid #e7eeee; background: #fff;
+  }
+  .fc-assistant-input {
+    min-width: 0; flex: 1; padding: 9px 11px; border: 1px solid #cee2e1;
+    border-radius: 20px; outline: none; font-size: 12px;
+  }
+  .fc-assistant-input:focus { border-color: #02807c; box-shadow: 0 0 0 3px rgba(2,128,124,.1); }
+  .fc-assistant-send {
+    width: 36px; height: 36px; flex-shrink: 0; border: 0; border-radius: 50%;
+    color: #fff; background: #02807c;
+  }
+  @media (max-width: 768px) {
+    #fc-assistant { right: 16px; bottom: 16px; }
+    .fc-assistant-body { height: 250px; }
+  }
+</style>
+
+<div id="fc-assistant">
+  <section class="fc-assistant-panel" id="fc-assistant-panel" aria-label="Asistente virtual">
+    <header class="fc-assistant-head">
+      <div class="fc-assistant-title">
+        <i class="fas fa-headset"></i>
+        <div><strong>Asistente Full Cars</strong><small>Ayuda local y rápida</small></div>
+      </div>
+      <button class="fc-assistant-close" type="button" aria-label="Cerrar asistente"><i class="fas fa-times"></i></button>
+    </header>
+    <div class="fc-assistant-body" id="fc-assistant-body" aria-live="polite">
+      <div class="fc-assistant-message bot">Hola. Puedo ayudarte a buscar repuestos o resolver dudas frecuentes.</div>
+      <div class="fc-assistant-suggestions">
+        <button class="fc-assistant-chip" type="button">¿Qué categorías tienen?</button>
+        <button class="fc-assistant-chip" type="button">Busco aceite</button>
+        <button class="fc-assistant-chip" type="button">¿Cómo veo mis pedidos?</button>
+      </div>
+    </div>
+    <form class="fc-assistant-form" id="fc-assistant-form">
+      {% csrf_token %}
+      <input class="fc-assistant-input" id="fc-assistant-input" maxlength="200" placeholder="Escribe tu consulta..." aria-label="Consulta para el asistente">
+      <button class="fc-assistant-send" type="submit" aria-label="Enviar consulta"><i class="fas fa-paper-plane"></i></button>
+    </form>
+  </section>
+  <button class="fc-assistant-toggle" id="fc-assistant-toggle" type="button" aria-label="Abrir asistente virtual" aria-expanded="false">
+    <i class="fas fa-comments"></i>
+  </button>
+</div>
+
+<script>
+  (() => {
+    const panel = document.getElementById('fc-assistant-panel');
+    const toggle = document.getElementById('fc-assistant-toggle');
+    const close = panel.querySelector('.fc-assistant-close');
+    const body = document.getElementById('fc-assistant-body');
+    const form = document.getElementById('fc-assistant-form');
+    const input = document.getElementById('fc-assistant-input');
+    const token = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    const scrollToEnd = () => { body.scrollTop = body.scrollHeight; };
+    const addMessage = (text, type) => {
+      const message = document.createElement('div');
+      message.className = `fc-assistant-message ${type}`;
+      message.textContent = text;
+      body.appendChild(message);
+      scrollToEnd();
+    };
+    const addProducts = (products) => {
+      products.forEach(product => {
+        const link = document.createElement('a');
+        link.className = 'fc-assistant-product';
+        link.href = product.url;
+        const title = document.createElement('strong');
+        title.textContent = product.nombre;
+        const detail = document.createElement('span');
+        detail.textContent = `${product.precio} · ${product.categoria} · Stock ${product.stock}`;
+        link.append(title, detail);
+        body.appendChild(link);
+      });
+      scrollToEnd();
+    };
+    const ask = async (question) => {
+      const clean = question.trim();
+      if (!clean) return;
+      addMessage(clean, 'user');
+      input.value = '';
+      input.disabled = true;
+      try {
+        const response = await fetch("{% url 'asistente_responder' %}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+          body: JSON.stringify({ pregunta: clean })
+        });
+        const data = await response.json();
+        addMessage(data.respuesta || data.error || 'No pude responder en este momento.', 'bot');
+        if (data.productos) addProducts(data.productos);
+      } catch {
+        addMessage('No pude responder en este momento. Intenta nuevamente.', 'bot');
+      } finally {
+        input.disabled = false;
+        input.focus();
+      }
+    };
+    const setOpen = (open) => {
+      panel.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+      if (open) input.focus();
+    };
+
+    toggle.addEventListener('click', () => setOpen(!panel.classList.contains('open')));
+    close.addEventListener('click', () => setOpen(false));
+    form.addEventListener('submit', event => { event.preventDefault(); ask(input.value); });
+    panel.querySelectorAll('.fc-assistant-chip').forEach(chip => {
+      chip.addEventListener('click', () => ask(chip.textContent));
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') setOpen(false);
+    });
+  })();
+</script>
