@@ -55,4 +55,10 @@ urlpatterns = [
         never_cache(auth_views.PasswordResetCompleteView.as_view(template_name="usuarios/password_reset_complete.html")),
         name="password_reset_complete",
     ),
+    # ── Mercado Pago ──────────────────────────────────────────────
+    path("api/preferencia-mp/",            views.crear_preferencia_mp, name="crear_preferencia_mp"),
+    path("webhook/mp/",                    views.webhook_mp,           name="webhook_mp"),
+    path("pago/exitoso/<int:compra_id>/",  views.pago_exitoso,         name="pago_exitoso"),
+    path("pago/fallido/<int:compra_id>/",  views.pago_fallido,         name="pago_fallido"),
+    path("pago/pendiente/<int:compra_id>/",views.pago_pendiente,       name="pago_pendiente"),
 ]

@@ -4,6 +4,11 @@ import os
 import dj_database_url
 from django.contrib.messages import constants as message_constants
 
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -157,3 +162,6 @@ X_FRAME_OPTIONS = "DENY"
 SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
 SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", False)
+
+MERCADOPAGO_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
+MERCADOPAGO_PUBLIC_KEY   = os.getenv("MP_PUBLIC_KEY")

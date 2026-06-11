@@ -182,9 +182,13 @@ def checkout(request):
         except StockInsuficiente:
             messages.error(request, "El stock cambió mientras confirmabas. Revisa tu carrito.")
             return redirect("carrito")
+
+        # ✅ Esto va FUERA del except, al mismo nivel que el try
         carrito.vaciar(request)
-        messages.success(request, f"Pedido #{compra.pk} confirmado correctamente.")
-        return redirect("compra_detalle", compra_id=compra.pk)
+        return render(request, "repuestosfullcars/checkout_pago.html", {
+            "compra": compra,
+            "mp_public_key": settings.MERCADOPAGO_PUBLIC_KEY,
+        })
 
     return render(request, "repuestosfullcars/checkout.html", {**resumen, "form": form})
 
@@ -293,3 +297,103 @@ def admin_compras(request):
 
     compras = Compra.objects.select_related("usuario").prefetch_related("detalles").order_by("-fecha_compra")
     return render(request, "repuestosfullcars/admin_compras.html", {"compras": compras})
+
+# ── Mercado Pago ──────────────────────────────────────────────
+import mercadopago
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+
+@require_POST
+def crear_preferencia_mp(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "No autenticado"}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        compra_id = data.get("compra_id")
+
+        compra = get_object_or_404(
+            Compra.objects.prefetch_related("detalles__producto"),
+            pk=compra_id,
+            usuario=request.user,
+        )
+
+        sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+
+        items = [
+            {
+                "title":      detalle.nombre_producto,
+                "quantity":   detalle.cantidad,
+                "unit_price": float(detalle.precio_unitario),
+                "currency_id": "CLP",
+            }
+            for detalle in compra.detalles.all()
+        ]
+
+        base_url = request.build_absolute_uri("/").rstrip("/")
+
+        preference_data = {
+            "items": items,
+            "back_urls": {
+                "success": f"{base_url}/pago/exitoso/{compra.pk}/",
+                "failure": f"{base_url}/pago/fallido/{compra.pk}/",
+                "pending": f"{base_url}/pago/pendiente/{compra.pk}/",
+            },
+            "external_reference": str(compra.pk),
+        }
+
+        # auto_return solo en producción
+        if not settings.DEBUG:
+            preference_data["auto_return"] = "approved"
+
+        resultado = sdk.preference().create(preference_data)
+
+        if resultado["status"] == 201:
+            return JsonResponse({
+                "preference_id": resultado["response"]["id"],
+                "init_point": resultado["response"]["sandbox_init_point"],
+            })
+
+    except Exception as e:
+        print(f"ERROR en crear_preferencia_mp: {e}")
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+@csrf_exempt
+def webhook_mp(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            if data.get("type") == "payment":
+                payment_id = data["data"]["id"]
+                sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+                pago = sdk.payment().get(payment_id)["response"]
+                compra_id = pago.get("external_reference")
+                if compra_id and pago["status"] == "approved":
+                    compra = Compra.objects.get(pk=compra_id)
+                    compra.estado_compra = Compra.ESTADO_PENDIENTE
+                    compra.save(update_fields=["estado_compra", "fecha_actualizacion"])
+        except Exception as e:
+            print(f"Webhook error: {e}")
+    return JsonResponse({"status": "ok"})
+
+
+@never_cache
+def pago_exitoso(request, compra_id):
+    compra = get_object_or_404(Compra, pk=compra_id, usuario=request.user)
+    messages.success(request, f"¡Pago del pedido #{compra.pk} aprobado!")
+    return redirect("compra_detalle", compra_id=compra.pk)
+
+
+@never_cache
+def pago_fallido(request, compra_id):
+    compra = get_object_or_404(Compra, pk=compra_id, usuario=request.user)
+    messages.error(request, f"El pago del pedido #{compra.pk} falló. Intenta nuevamente.")
+    return redirect("compra_detalle", compra_id=compra.pk)
+
+
+@never_cache
+def pago_pendiente(request, compra_id):
+    compra = get_object_or_404(Compra, pk=compra_id, usuario=request.user)
+    messages.warning(request, f"Pedido #{compra.pk} pendiente de confirmación.")
+    return redirect("compra_detalle", compra_id=compra.pk)
