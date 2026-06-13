@@ -1,5 +1,6 @@
 from decimal import Decimal
 import json
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core import mail
@@ -8,8 +9,14 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from .models import Categoria, Compra, MovimientoStock, Producto
+from .servicios import rechazar_compra
 
 
+@override_settings(
+    DEBUG=True,
+    MERCADOPAGO_ACCESS_TOKEN="",
+    MERCADOPAGO_PUBLIC_KEY="",
+)
 class BaseTestCase(TestCase):
     def setUp(self):
         self.categoria = Categoria.objects.create(nombre_categoria="Aceites", estado="activo")
@@ -23,6 +30,18 @@ class BaseTestCase(TestCase):
         )
         self.usuario = User.objects.create_user("cliente", "cliente@example.com", "ClaveSegura123!")
         self.staff = User.objects.create_user("admin", "admin@example.com", "ClaveSegura123!", is_staff=True)
+
+    def datos_checkout(self, **cambios):
+        datos = {
+            "nombre_receptor": "Cliente Prueba",
+            "telefono_contacto": "+56 9 1234 5678",
+            "comuna": "Santiago",
+            "ciudad": "Santiago",
+            "direccion_envio": "Av. Siempre Viva 123",
+            "referencia_entrega": "Casa con portón gris",
+        }
+        datos.update(cambios)
+        return datos
 
 
 class CatalogoTests(BaseTestCase):
@@ -43,6 +62,27 @@ class CatalogoTests(BaseTestCase):
         respuesta = self.client.get(reverse("producto_detalle", args=[self.producto.pk]))
         self.assertEqual(respuesta.status_code, 404)
 
+    def test_busqueda_visible_filtra_productos(self):
+        categoria_filtros = Categoria.objects.create(
+            nombre_categoria="Filtros",
+            estado="activo",
+        )
+        Producto.objects.create(
+            categoria=categoria_filtros,
+            nombre_producto="Filtro de aire",
+            precio=Decimal("7990"),
+            stock=10,
+            estado="activo",
+        )
+        respuesta = self.client.get(reverse("index"), {"q": "Aceite"})
+        self.assertContains(respuesta, 'name="q"')
+        self.assertContains(respuesta, "Aceite 10W40")
+        self.assertNotContains(respuesta, "Filtro de aire")
+
+    def test_catalogo_muestra_bajo_stock(self):
+        respuesta = self.client.get(reverse("index"))
+        self.assertContains(respuesta, "Bajo stock")
+
 
 class CuentaTests(BaseTestCase):
     def test_google_no_aparece_sin_credenciales(self):
@@ -53,6 +93,19 @@ class CuentaTests(BaseTestCase):
         respuesta = self.client.post(
             reverse("registro"),
             {"username": "nuevo", "email": "nuevo@example.com", "password": "123", "confirmPassword": "123"},
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertFalse(User.objects.filter(username="nuevo").exists())
+
+    def test_registro_rechaza_email_invalido_en_servidor(self):
+        respuesta = self.client.post(
+            reverse("registro"),
+            {
+                "username": "nuevo",
+                "email": "correo-invalido",
+                "password": "ClaveSegura123!",
+                "confirmPassword": "ClaveSegura123!",
+            },
         )
         self.assertEqual(respuesta.status_code, 200)
         self.assertFalse(User.objects.filter(username="nuevo").exists())
@@ -94,20 +147,113 @@ class CarritoYPedidoTests(BaseTestCase):
         respuesta = self.client.get(reverse("carrito"))
         self.assertContains(respuesta, 'value="5"')
 
+    def test_detalle_permite_agregar_varias_unidades(self):
+        self.client.post(
+            reverse("agregar_carrito", args=[self.producto.pk]),
+            {"cantidad": "3"},
+        )
+        respuesta = self.client.get(reverse("carrito"))
+        self.assertContains(respuesta, 'value="3"')
+
     def test_checkout_crea_pedido_y_descuenta_stock(self):
         self.client.post(reverse("agregar_carrito", args=[self.producto.pk]))
-        respuesta = self.client.post(reverse("checkout"), {"direccion_envio": "Av. Siempre Viva 123"})
+        respuesta = self.client.post(reverse("checkout"), self.datos_checkout())
         compra = Compra.objects.get(usuario=self.usuario)
         self.producto.refresh_from_db()
         self.assertRedirects(respuesta, reverse("compra_detalle", args=[compra.pk]))
         self.assertEqual(compra.detalles.get().cantidad, 1)
         self.assertEqual(self.producto.stock, 4)
         self.assertTrue(compra.stock_descontado)
+        self.assertEqual(compra.metodo_pago, "registro_local")
+        self.assertEqual(compra.nombre_receptor, "Cliente Prueba")
+        self.assertEqual(compra.telefono_contacto, "+56 9 1234 5678")
+        self.assertEqual(compra.comuna, "Santiago")
+        self.assertEqual(compra.referencia_entrega, "Casa con portón gris")
         self.assertEqual(MovimientoStock.objects.get().cantidad, 1)
+
+    def test_checkout_rechaza_telefono_invalido(self):
+        self.client.post(reverse("agregar_carrito", args=[self.producto.pk]))
+        respuesta = self.client.post(
+            reverse("checkout"),
+            self.datos_checkout(telefono_contacto="abc"),
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "Ingresa un teléfono válido")
+        self.assertFalse(Compra.objects.filter(usuario=self.usuario).exists())
+
+    @override_settings(
+        MERCADOPAGO_ACCESS_TOKEN="token-prueba",
+        MERCADOPAGO_PUBLIC_KEY="publica-prueba",
+    )
+    def test_checkout_con_credenciales_muestra_pantalla_de_pago(self):
+        self.client.post(reverse("agregar_carrito", args=[self.producto.pk]))
+        respuesta = self.client.post(
+            reverse("checkout"),
+            self.datos_checkout(),
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "Pagar con Mercado Pago")
+
+    @override_settings(
+        DEBUG=False,
+        MERCADOPAGO_ACCESS_TOKEN="",
+        MERCADOPAGO_PUBLIC_KEY="",
+    )
+    def test_produccion_sin_credenciales_no_crea_pedido(self):
+        self.client.post(reverse("agregar_carrito", args=[self.producto.pk]))
+        respuesta = self.client.post(
+            reverse("checkout"),
+            self.datos_checkout(),
+        )
+
+        self.producto.refresh_from_db()
+        self.assertEqual(respuesta.status_code, 503)
+        self.assertFalse(Compra.objects.filter(usuario=self.usuario).exists())
+        self.assertEqual(self.producto.stock, 5)
+
+    def test_pago_rechazado_restaura_stock(self):
+        self.client.post(reverse("agregar_carrito", args=[self.producto.pk]))
+        self.client.post(reverse("checkout"), self.datos_checkout())
+        compra = Compra.objects.get(usuario=self.usuario)
+
+        rechazar_compra(compra.pk)
+
+        compra.refresh_from_db()
+        self.producto.refresh_from_db()
+        self.assertEqual(compra.estado_compra, Compra.ESTADO_RECHAZADA)
+        self.assertEqual(self.producto.stock, 5)
+        self.assertFalse(compra.stock_descontado)
+
+    @override_settings(
+        MERCADOPAGO_ACCESS_TOKEN="token-prueba",
+        MERCADOPAGO_PUBLIC_KEY="publica-prueba",
+    )
+    @patch("repuestosfullcars.views.mercadopago.SDK")
+    def test_retorno_aprobado_actualiza_estado_del_pedido(self, sdk_mock):
+        self.client.post(reverse("agregar_carrito", args=[self.producto.pk]))
+        self.client.post(reverse("checkout"), self.datos_checkout())
+        compra = Compra.objects.get(usuario=self.usuario)
+        sdk_mock.return_value.payment.return_value.get.return_value = {
+            "status": 200,
+            "response": {
+                "external_reference": str(compra.pk),
+                "transaction_amount": float(compra.total),
+                "status": "approved",
+            },
+        }
+
+        respuesta = self.client.get(
+            reverse("pago_exitoso", args=[compra.pk]),
+            {"payment_id": "123"},
+        )
+
+        compra.refresh_from_db()
+        self.assertRedirects(respuesta, reverse("compra_detalle", args=[compra.pk]))
+        self.assertEqual(compra.estado_compra, Compra.ESTADO_PAGADA)
 
     def test_otro_cliente_no_puede_ver_pedido(self):
         self.client.post(reverse("agregar_carrito", args=[self.producto.pk]))
-        self.client.post(reverse("checkout"), {"direccion_envio": "Av. Siempre Viva 123"})
+        self.client.post(reverse("checkout"), self.datos_checkout())
         compra = Compra.objects.get(usuario=self.usuario)
         otro = User.objects.create_user("otro", "otro@example.com", "ClaveSegura123!")
         self.client.force_login(otro)
@@ -163,7 +309,7 @@ class AdministracionTests(BaseTestCase):
     def test_anular_pedido_restaura_stock_una_sola_vez(self):
         self.client.force_login(self.usuario)
         self.client.post(reverse("agregar_carrito", args=[self.producto.pk]))
-        self.client.post(reverse("checkout"), {"direccion_envio": "Av. Siempre Viva 123"})
+        self.client.post(reverse("checkout"), self.datos_checkout())
         compra = Compra.objects.get(usuario=self.usuario)
         self.client.force_login(self.staff)
         url = reverse("admin_compras")

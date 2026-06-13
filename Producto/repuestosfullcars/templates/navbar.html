@@ -130,15 +130,37 @@
   .fc-btn-logout:hover { background: rgba(255,255,255,0.18); }
   .fc-logout-form { margin: 0; }
 
+  .fc-mobile-toggle {
+    display: none;
+    width: 40px; height: 40px;
+    align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 8px;
+    color: white; background: rgba(255,255,255,.1);
+  }
+  .fc-mobile-menu {
+    display: none;
+    padding: 12px 16px 16px;
+    background: #014d4a;
+    border-top: 1px solid rgba(255,255,255,.15);
+  }
+  .fc-mobile-menu a,
+  .fc-mobile-menu button {
+    display: block; width: 100%; padding: 10px 12px;
+    color: white; text-align: left; border: 0;
+    border-radius: 7px; background: transparent;
+  }
+  .fc-mobile-menu a:hover,
+  .fc-mobile-menu button:hover { background: rgba(255,255,255,.1); }
+  .fc-mobile-menu.open { display: block; }
+
   /* Empuja el contenido de la página hacia abajo */
   body { padding-top: 64px; }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1100px) {
     .fc-inner { padding: 0 16px; }
-    .fc-links, .fc-user-badge { display: none; }
-    .fc-btn-logout { padding: 7px 10px; }
-    .fc-btn-admin { padding: 7px 10px; }
-    .fc-btn-admin .fc-admin-label { display: none; }
+    .fc-links, .fc-right { display: none; }
+    .fc-mobile-toggle { display: flex; }
   }
 </style>
 
@@ -155,6 +177,10 @@
         <div class="fc-logo-sub">Repuestos</div>
       </div>
     </a>
+
+    <button class="fc-mobile-toggle" id="fc-mobile-toggle" type="button" aria-label="Abrir menú" aria-expanded="false">
+      <i class="fas fa-bars"></i>
+    </button>
 
     <!-- Links centrales -->
     <div class="fc-links">
@@ -202,4 +228,36 @@
     </div>
 
   </div>
+
+  <div class="fc-mobile-menu" id="fc-mobile-menu">
+    <a href="{% url 'index' %}"><i class="fas fa-home me-2"></i>Inicio y repuestos</a>
+    <a href="#fc-footer"><i class="fas fa-envelope me-2"></i>Contacto</a>
+    {% if user.is_authenticated %}
+      <a href="{% url 'carrito' %}"><i class="fas fa-shopping-cart me-2"></i>Carrito ({{ carrito_cantidad }})</a>
+      <a href="{% url 'mis_compras' %}"><i class="fas fa-receipt me-2"></i>Mis pedidos</a>
+      {% if user.is_staff %}
+        <a href="{% url 'admin_productos' %}"><i class="fas fa-boxes me-2"></i>Inventario</a>
+        <a href="{% url 'admin_compras' %}"><i class="fas fa-clipboard-list me-2"></i>Gestión de pedidos</a>
+      {% endif %}
+      <form method="POST" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit"><i class="fas fa-sign-out-alt me-2"></i>Cerrar sesión</button>
+      </form>
+    {% else %}
+      <a href="{% url 'login' %}"><i class="fas fa-sign-in-alt me-2"></i>Iniciar sesión</a>
+      <a href="{% url 'registro' %}"><i class="fas fa-user-plus me-2"></i>Registrarse</a>
+    {% endif %}
+  </div>
 </nav>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const button = document.getElementById('fc-mobile-toggle');
+    const menu = document.getElementById('fc-mobile-menu');
+    if (!button || !menu) return;
+    button.addEventListener('click', () => {
+      const open = menu.classList.toggle('open');
+      button.setAttribute('aria-expanded', String(open));
+    });
+  });
+</script>

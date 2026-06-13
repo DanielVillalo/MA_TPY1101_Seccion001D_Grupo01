@@ -1,142 +1,228 @@
-{% extends 'repuestosfullcars/home.html' %}
-{% load static %}
+{% extends 'base.html' %}
+
+{% block title %}Inventario - Full Cars{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="admin-header bg-primary text-white p-3 rounded-top" style="background: linear-gradient(135deg, #02807c 0%, #009199 100%) !important;">
-        <div class="d-flex justify-content-between align-items-center">
-            <h3><i class="fas fa-boxes"></i> Gestión de Inventario</h3>
-            <div>
-                <a href="{% url 'admin_categorias' %}" class="btn btn-light btn-sm">Categorías</a>
-                <a href="{% url 'admin_compras' %}" class="btn btn-light btn-sm">Pedidos</a>
-                <a href="{% url 'index' %}" class="btn btn-light btn-sm">Regresar al Home</a>
+<section class="fc-page">
+  <header class="fc-page-header">
+    <div>
+      <p class="fc-eyebrow">Panel de administración</p>
+      <h1 class="fc-page-title">Gestión de inventario</h1>
+      <p class="fc-page-lead">Revisa el stock y administra los productos desde un solo lugar.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'admin_categorias' %}" class="fc-button fc-button-secondary">
+        <i class="fas fa-tags"></i>Categorías
+      </a>
+      <a href="{% url 'admin_compras' %}" class="fc-button fc-button-secondary">
+        <i class="fas fa-clipboard-list"></i>Pedidos
+      </a>
+    </div>
+  </header>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="fc-stat-grid">
+    <article class="fc-stat">
+      <div class="fc-stat-icon"><i class="fas fa-boxes-stacked"></i></div>
+      <div><strong>{{ estadisticas.total }}</strong><span>Productos registrados</span></div>
+    </article>
+    <article class="fc-stat">
+      <div class="fc-stat-icon"><i class="fas fa-circle-check"></i></div>
+      <div><strong>{{ estadisticas.activos }}</strong><span>Productos activos</span></div>
+    </article>
+    <article class="fc-stat">
+      <div class="fc-stat-icon"><i class="fas fa-triangle-exclamation"></i></div>
+      <div><strong>{{ estadisticas.stock_bajo }}</strong><span>Con stock bajo</span></div>
+    </article>
+    <article class="fc-stat">
+      <div class="fc-stat-icon"><i class="fas fa-box-open"></i></div>
+      <div><strong>{{ estadisticas.sin_stock }}</strong><span>Sin stock</span></div>
+    </article>
+  </div>
+
+  <div class="fc-admin-grid">
+    <div class="fc-panel">
+      <div class="fc-panel-body">
+        <div class="fc-toolbar">
+          <div>
+            <h2 class="fc-section-title mb-1">Productos</h2>
+            <span class="fc-product-meta">{{ productos|length }} resultado(s)</span>
+          </div>
+          <form method="GET" class="fc-search">
+            <input
+              type="search"
+              name="q"
+              value="{{ busqueda }}"
+              class="form-control"
+              placeholder="Buscar producto o categoría"
+              aria-label="Buscar en el inventario"
+            >
+            <button class="fc-button" type="submit" aria-label="Buscar">
+              <i class="fas fa-search"></i>
+            </button>
+            {% if busqueda %}
+              <a href="{% url 'admin_productos' %}" class="fc-button fc-button-secondary" aria-label="Limpiar búsqueda">
+                <i class="fas fa-xmark"></i>
+              </a>
+            {% endif %}
+          </form>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table fc-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Stock</th>
+                <th>Precio</th>
+                <th class="text-end">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in productos %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-3">
+                      {% if p.imagen_url %}
+                        <img src="{{ p.imagen_url.url }}" alt="" class="fc-product-thumb">
+                      {% else %}
+                        <span class="fc-product-thumb"><i class="fas fa-wrench"></i></span>
+                      {% endif %}
+                      <div>
+                        <span class="fc-product-name">{{ p.nombre_producto }}</span>
+                        <span class="fc-product-meta">
+                          {% if p.estado == 'activo' %}Visible en catálogo{% else %}Producto inactivo{% endif %}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ p.categoria.nombre_categoria }}</td>
+                  <td>
+                    {% if p.nivel_stock == 'disponible' %}
+                      <span class="fc-stock fc-stock-ok">{{ p.stock }} unidades</span>
+                    {% elif p.nivel_stock == 'bajo' %}
+                      <span class="fc-stock fc-stock-low">{{ p.stock }} unidades</span>
+                    {% else %}
+                      <span class="fc-stock fc-stock-none">Sin stock</span>
+                    {% endif %}
+                  </td>
+                  <td><strong>${{ p.precio|floatformat:"0" }}</strong></td>
+                  <td>
+                    <div class="d-flex justify-content-end gap-2">
+                      <a href="?edit={{ p.id }}" class="btn btn-sm btn-outline-secondary" title="Editar">
+                        <i class="fas fa-pen"></i>
+                      </a>
+                      {% if p.estado == 'activo' %}
+                        <form method="POST" action="{% url 'eliminar_producto' p.id %}">
+                          {% csrf_token %}
+                          <button
+                            type="submit"
+                            class="btn btn-sm btn-outline-danger"
+                            title="Desactivar"
+                            onclick="return confirm('¿Deseas desactivar este producto?')"
+                          >
+                            <i class="fas fa-eye-slash"></i>
+                          </button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5">
+                    <div class="fc-empty">
+                      <i class="fas fa-magnifying-glass"></i>
+                      No se encontraron productos con esa búsqueda.
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <aside class="fc-panel fc-admin-form">
+      <div class="fc-panel-body">
+        <p class="fc-eyebrow">{% if producto_edit %}Editando producto{% else %}Registro rápido{% endif %}</p>
+        <h2 class="fc-section-title">
+          {% if producto_edit %}{{ producto_edit.nombre_producto }}{% else %}Agregar producto{% endif %}
+        </h2>
+
+        <form method="POST" enctype="multipart/form-data" class="fc-form">
+          {% csrf_token %}
+          {% if producto_edit %}<input type="hidden" name="producto_id" value="{{ producto_edit.id }}">{% endif %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="fc-field">
+            <label for="{{ form.nombre_producto.id_for_label }}">Nombre del producto</label>
+            {{ form.nombre_producto }}
+            {% for error in form.nombre_producto.errors %}<span class="fc-field-error">{{ error }}</span>{% endfor %}
+          </div>
+
+          <div class="fc-field">
+            <label for="{{ form.categoria.id_for_label }}">Categoría</label>
+            {{ form.categoria }}
+            {% for error in form.categoria.errors %}<span class="fc-field-error">{{ error }}</span>{% endfor %}
+          </div>
+
+          <div class="fc-field">
+            <label for="{{ form.descripcion.id_for_label }}">Descripción</label>
+            {{ form.descripcion }}
+            {% for error in form.descripcion.errors %}<span class="fc-field-error">{{ error }}</span>{% endfor %}
+          </div>
+
+          <div class="row g-3">
+            <div class="col-sm-6 fc-field">
+              <label for="{{ form.precio.id_for_label }}">Precio (CLP)</label>
+              {{ form.precio }}
+              {% for error in form.precio.errors %}<span class="fc-field-error">{{ error }}</span>{% endfor %}
             </div>
-        </div>
-        
-        <ul class="nav nav-pills nav-fill mt-3" id="adminTab" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active text-white" id="list-tab" data-bs-toggle="tab" data-bs-target="#listSection" type="button">Lista de Productos</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link text-white" id="form-tab" data-bs-toggle="tab" data-bs-target="#formSection" type="button">
-                    {% if producto_edit %}Editar: {{ producto_edit.nombre_producto }}{% else %}Nuevo Producto{% endif %}
-                </button>
-            </li>
-        </ul>
-    </div>
+            <div class="col-sm-6 fc-field">
+              <label for="{{ form.stock.id_for_label }}">Stock</label>
+              {{ form.stock }}
+              {% for error in form.stock.errors %}<span class="fc-field-error">{{ error }}</span>{% endfor %}
+            </div>
+          </div>
 
-    <div class="tab-content bg-white shadow p-4 rounded-bottom">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-        <!-- LISTADO -->
-        <div class="tab-pane fade show active" id="listSection">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Vista</th>
-                        <th>Producto</th>
-                        <th>Categoría</th>
-                        <th>Stock</th>
-                        <th>Precio</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in productos %}
-                    <tr>
-                        <td>
-                            {% if p.imagen_url %}
-                                <img src="{{ p.imagen_url.url }}" width="45" height="45" class="rounded-circle" style="object-fit: cover;">
-                            {% else %}
-                                <div class="bg-light rounded-circle d-inline-block text-center" style="width:45px; height:45px; line-height:45px;">
-                                    <i class="fas fa-image text-muted"></i>
-                                </div>
-                            {% endif %}
-                        </td>
-                        <td><strong>{{ p.nombre_producto }}</strong></td>
-                        <td>{{ p.categoria.nombre_categoria }}</td>
-                        <td>
-                            <span class="badge {% if p.stock <= 5 %}bg-danger{% else %}bg-success{% endif %}">
-                                {{ p.stock }} uni.
-                            </span>
-                        </td>
-                        <td>${{ p.precio }}</td>
-                        <td>
-                            <a href="?edit={{ p.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-pen"></i></a>
-                            <form method="POST" action="{% url 'eliminar_producto' p.id %}" class="d-inline">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Seguro?')"><i class="fas fa-trash"></i></button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+          <div class="fc-field">
+            <label for="{{ form.estado.id_for_label }}">Estado</label>
+            {{ form.estado }}
+            {% for error in form.estado.errors %}<span class="fc-field-error">{{ error }}</span>{% endfor %}
+          </div>
 
-        <!-- FORMULARIO CRUD -->
-        <div class="tab-pane fade {% if producto_edit %}show active{% endif %}" id="formSection">
-            <form method="POST" enctype="multipart/form-data">
-                {% csrf_token %}
-                <input type="hidden" name="producto_id" value="{{ producto_edit.id }}">
-                
-                <div class="row g-3">
-                    <div class="col-md-8">
-                        <label class="form-label fw-bold">Nombre del Producto</label>
-                        <input type="text" name="nombre_producto" class="form-control" value="{{ producto_edit.nombre_producto }}" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Categoría</label>
-                        <select name="categoria" class="form-select" required>
-                            {% for cat in categorias %}
-                                <option value="{{ cat.id }}" {% if producto_edit.categoria.id == cat.id %}selected{% endif %}>
-                                    {{ cat.nombre_categoria }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+          <div class="fc-field">
+            <label for="{{ form.imagen_url.id_for_label }}">Imagen del producto</label>
+            {{ form.imagen_url }}
+            {% if producto_edit.imagen_url %}
+              <span class="fc-product-meta d-block mt-1">Actual: {{ producto_edit.imagen_url.name }}</span>
+            {% endif %}
+            {% for error in form.imagen_url.errors %}<span class="fc-field-error">{{ error }}</span>{% endfor %}
+          </div>
 
-                    <div class="col-12">
-                        <label class="form-label fw-bold">Descripción</label>
-                        <textarea name="descripcion" class="form-control" rows="2">{{ producto_edit.descripcion }}</textarea>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Precio (CLP)</label>
-                        <input type="number" name="precio" class="form-control" value="{{ producto_edit.precio|stringformat:'d' }}" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Stock Inicial</label>
-                        <input type="number" name="stock" class="form-control" value="{{ producto_edit.stock }}" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Estado</label>
-                        <select name="estado" class="form-select">
-                            <option value="activo" {% if producto_edit.estado == 'activo' %}selected{% endif %}>Activo</option>
-                            <option value="inactivo" {% if producto_edit.estado == 'inactivo' %}selected{% endif %}>Inactivo</option>
-                        </select>
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label fw-bold">Imagen del Producto</label>
-                        <input type="file" name="imagen_url" class="form-control">
-                        {% if producto_edit.imagen_url %}
-                            <small class="text-muted">Imagen actual: {{ producto_edit.imagen_url.name }}</small>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="mt-4 border-top pt-3 text-end">
-                    <a href="{% url 'admin_productos' %}" class="btn btn-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-success px-4">
-                        <i class="fas fa-save"></i> {% if producto_edit %}Actualizar{% else %}Guardar{% endif %} Producto
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+          <div class="d-grid gap-2 mt-4">
+            <button type="submit" class="fc-button">
+              <i class="fas fa-floppy-disk"></i>
+              {% if producto_edit %}Guardar cambios{% else %}Agregar al inventario{% endif %}
+            </button>
+            {% if producto_edit %}
+              <a href="{% url 'admin_productos' %}" class="fc-button fc-button-secondary">Cancelar edición</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </aside>
+  </div>
+</section>
 {% endblock %}

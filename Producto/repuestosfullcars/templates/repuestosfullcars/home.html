@@ -33,6 +33,20 @@
     position: absolute; right: 48px; top: 50%; transform: translateY(-50%);
   }
 
+  .catalogo-filtros {
+    display: grid;
+    grid-template-columns: 1fr 220px auto;
+    gap: 10px;
+    margin: -18px 20px 34px;
+    padding: 16px;
+    position: relative;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.09);
+  }
+  .catalogo-filtros .form-control,
+  .catalogo-filtros .form-select { border-color: #cfe5e4; }
+
   .categoria-section { margin-bottom: 40px; }
 
   .categoria-header {
@@ -105,6 +119,7 @@
     padding: 2px 7px; border-radius: 20px;
   }
   .producto-stock-badge.sin-stock { color: #e74c3c; }
+  .producto-stock-badge.bajo-stock { color: #b26a00; }
 
   .producto-body {
     padding: 12px 14px 14px;
@@ -174,6 +189,22 @@
     background: linear-gradient(to right, #ddd, transparent);
     margin-bottom: 40px;
   }
+
+  @media (max-width: 768px) {
+    .menu-hero { padding: 28px 24px; }
+    .catalogo-filtros {
+      grid-template-columns: 1fr;
+      margin: -18px 0 28px;
+    }
+    .carrusel-track-outer {
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: 10px;
+    }
+    .producto-card { scroll-snap-align: start; }
+    .carrusel-nav { display: none; }
+    .categoria-header { align-items: flex-start; }
+  }
 </style>
 
 <!-- Hero -->
@@ -182,6 +213,27 @@
   <p>Calidad garantizada para tu vehículo</p>
   <i class="fas fa-cog gear-icon fa-spin" style="animation-duration: 10s;"></i>
 </div>
+
+<form method="GET" class="catalogo-filtros" aria-label="Buscar y filtrar repuestos">
+  <div class="input-group">
+    <span class="input-group-text bg-white"><i class="fas fa-search" style="color:#02807c;"></i></span>
+    <input type="search" name="q" value="{{ busqueda }}" class="form-control" placeholder="Buscar por nombre, descripción o categoría">
+  </div>
+  <select name="categoria" class="form-select">
+    <option value="">Todas las categorías</option>
+    {% for categoria in categorias %}
+      <option value="{{ categoria.id }}" {% if categoria_filtro == categoria.id|stringformat:"s" %}selected{% endif %}>
+        {{ categoria.nombre_categoria }}
+      </option>
+    {% endfor %}
+  </select>
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-custom px-4">Buscar</button>
+    {% if busqueda or categoria_filtro %}
+      <a href="{% url 'index' %}" class="btn btn-outline-secondary">Limpiar</a>
+    {% endif %}
+  </div>
+</form>
 
 {% if messages %}
   {% for message in messages %}
@@ -204,7 +256,7 @@
             <i class="fas fa-chevron-right"></i>
           </button>
         </div>
-        <a href="?categoria={{ cat_data.categoria.id }}" class="ver-todos-btn">
+        <a href="?categoria={{ cat_data.categoria.id }}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}" class="ver-todos-btn">
           Ver todos <i class="fas fa-arrow-right ms-1" style="font-size:0.65rem;"></i>
         </a>
       </div>
@@ -222,8 +274,10 @@
                 <div class="placeholder-img"><i class="fas fa-wrench"></i></div>
               {% endif %}
               <span class="producto-badge">{{ cat_data.categoria.nombre_categoria }}</span>
-              {% if p.stock > 0 %}
-                <span class="producto-stock-badge"><i class="fas fa-check-circle me-1"></i>Stock</span>
+              {% if p.nivel_stock == 'disponible' %}
+                <span class="producto-stock-badge"><i class="fas fa-check-circle me-1"></i>Disponible</span>
+              {% elif p.nivel_stock == 'bajo' %}
+                <span class="producto-stock-badge bajo-stock"><i class="fas fa-exclamation-circle me-1"></i>Bajo stock</span>
               {% else %}
                 <span class="producto-stock-badge sin-stock"><i class="fas fa-times-circle me-1"></i>Sin stock</span>
               {% endif %}
@@ -253,7 +307,12 @@
 {% else %}
   <div class="empty-state">
     <i class="fas fa-box-open"></i>
-    <p>No hay productos disponibles en este momento.</p>
+    {% if busqueda or categoria_filtro %}
+      <p>No encontramos productos con los filtros seleccionados.</p>
+      <a href="{% url 'index' %}" class="btn btn-outline-secondary">Ver catálogo completo</a>
+    {% else %}
+      <p>No hay productos disponibles en este momento.</p>
+    {% endif %}
   </div>
 {% endif %}
 

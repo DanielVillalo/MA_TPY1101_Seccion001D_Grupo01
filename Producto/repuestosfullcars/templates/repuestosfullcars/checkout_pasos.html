@@ -1,0 +1,18 @@
+<div class="fc-steps" aria-label="Progreso de la compra">
+  <div class="fc-step {% if paso == 'carrito' %}is-active{% else %}is-complete{% endif %}">
+    <div class="fc-step-number"><i class="fas fa-shopping-cart"></i></div>
+    <span>Carrito</span>
+  </div>
+  <div class="fc-step {% if paso == 'entrega' %}is-active{% elif paso == 'pago' or paso == 'confirmacion' %}is-complete{% endif %}">
+    <div class="fc-step-number">2</div>
+    <span>Entrega</span>
+  </div>
+  <div class="fc-step {% if paso == 'pago' %}is-active{% elif paso == 'confirmacion' %}is-complete{% endif %}">
+    <div class="fc-step-number">3</div>
+    <span>Pago</span>
+  </div>
+  <div class="fc-step {% if paso == 'confirmacion' %}is-active{% endif %}">
+    <div class="fc-step-number">4</div>
+    <span>Confirmación</span>
+  </div>
+</div>

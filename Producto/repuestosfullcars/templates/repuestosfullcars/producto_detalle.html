@@ -3,38 +3,69 @@
 {% block title %}{{ producto.nombre_producto }} - Full Cars{% endblock %}
 
 {% block content %}
-<div class="custom-card p-4 mt-4">
-  <div class="row g-4 align-items-center">
-    <div class="col-md-5">
+<section class="fc-page">
+  <a href="{% url 'index' %}" class="d-inline-flex align-items-center gap-2 text-secondary mb-3">
+    <i class="fas fa-arrow-left"></i>Volver al catálogo
+  </a>
+
+  <article class="fc-panel fc-detail-grid">
+    <div class="fc-detail-media">
       {% if producto.imagen_url %}
-        <img src="{{ producto.imagen_url.url }}" alt="{{ producto.nombre_producto }}" class="img-fluid rounded-4 w-100" style="max-height:360px; object-fit:cover;">
+        <img src="{{ producto.imagen_url.url }}" alt="{{ producto.nombre_producto }}">
       {% else %}
-        <div class="rounded-4 d-flex align-items-center justify-content-center" style="height:300px; background:#e4f2f2;">
-          <i class="fas fa-wrench" style="font-size:5rem; color:#02807c; opacity:.3;"></i>
-        </div>
+        <i class="fas fa-gears fc-detail-placeholder" aria-hidden="true"></i>
       {% endif %}
     </div>
-    <div class="col-md-7">
-      <span class="badge mb-2" style="background:#02807c;">{{ producto.categoria.nombre_categoria }}</span>
-      <h2>{{ producto.nombre_producto }}</h2>
-      <p class="text-muted">{{ producto.descripcion|default:"Sin descripción disponible." }}</p>
-      <h3 style="color:#02807c;">${{ producto.precio }}</h3>
-      <p>
-        {% if producto.stock > 0 %}
-          <span class="badge bg-success">Stock disponible: {{ producto.stock }}</span>
+
+    <div class="d-flex flex-column justify-content-center">
+      <div>
+        <span class="fc-category-pill">{{ producto.categoria.nombre_categoria }}</span>
+        <h1 class="fc-detail-title">{{ producto.nombre_producto }}</h1>
+        <p class="fc-detail-description">
+          {{ producto.descripcion|default:"Este producto todavía no tiene una descripción detallada." }}
+        </p>
+      </div>
+
+      <div class="fc-price">${{ producto.precio|floatformat:"0" }}</div>
+
+      <div>
+        {% if producto.nivel_stock == 'disponible' %}
+          <span class="fc-stock fc-stock-ok"><i class="fas fa-circle-check me-1"></i>Stock disponible: {{ producto.stock }}</span>
+        {% elif producto.nivel_stock == 'bajo' %}
+          <span class="fc-stock fc-stock-low"><i class="fas fa-triangle-exclamation me-1"></i>Quedan {{ producto.stock }} unidades</span>
         {% else %}
-          <span class="badge bg-danger">Sin stock</span>
+          <span class="fc-stock fc-stock-none"><i class="fas fa-circle-xmark me-1"></i>Sin stock</span>
         {% endif %}
-      </p>
-      <form method="POST" action="{% url 'agregar_carrito' producto.id %}">
+      </div>
+
+      <div class="fc-benefits">
+        <div class="fc-benefit"><i class="fas fa-shield-halved"></i>Compra protegida</div>
+        <div class="fc-benefit"><i class="fas fa-box"></i>Stock actualizado</div>
+        <div class="fc-benefit"><i class="fas fa-truck-fast"></i>Entrega coordinada</div>
+        <div class="fc-benefit"><i class="fas fa-credit-card"></i>Pago con Mercado Pago</div>
+      </div>
+
+      <form method="POST" action="{% url 'agregar_carrito' producto.id %}" class="fc-purchase-row">
         {% csrf_token %}
         <input type="hidden" name="next" value="{% url 'carrito' %}">
-        <button type="submit" class="btn btn-custom px-4 py-2" {% if producto.stock <= 0 %}disabled{% endif %}>
-          <i class="fas fa-cart-plus me-1"></i> Añadir al carrito
+        <div class="fc-quantity">
+          <label for="cantidad">Cantidad</label>
+          <input
+            id="cantidad"
+            type="number"
+            name="cantidad"
+            value="1"
+            min="1"
+            max="{{ producto.stock }}"
+            class="form-control"
+            {% if producto.stock <= 0 %}disabled{% endif %}
+          >
+        </div>
+        <button type="submit" class="fc-button flex-grow-1" {% if producto.stock <= 0 %}disabled{% endif %}>
+          <i class="fas fa-cart-plus"></i>Añadir al carrito
         </button>
-        <a href="{% url 'index' %}" class="btn btn-outline-secondary ms-2">Volver al catálogo</a>
       </form>
     </div>
-  </div>
-</div>
+  </article>
+</section>
 {% endblock %}

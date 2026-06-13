@@ -24,7 +24,7 @@
             <td>${{ compra.total }}</td>
             <td><span class="badge bg-secondary">{{ compra.get_estado_compra_display }}</span></td>
             <td>
-              {% if compra.estado_compra == 'pendiente' %}
+              {% if compra.estado_compra == 'pagada' or compra.metodo_pago == 'registro_local' and compra.estado_compra == 'pendiente' %}
                 <form method="POST" class="d-inline">
                   {% csrf_token %}<input type="hidden" name="compra_id" value="{{ compra.id }}">
                   <button name="accion" value="entregar" class="btn btn-sm btn-outline-success">Entregar</button>

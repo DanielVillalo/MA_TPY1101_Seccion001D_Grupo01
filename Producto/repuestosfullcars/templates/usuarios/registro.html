@@ -52,22 +52,23 @@
             <form class="form-section" method="POST">
                 {% csrf_token %}
 
-            {% if messages %}
-                {% for message in messages %}
-                    {% if message.tags == 'error' %}
-                        <div class="alert alert-danger p-2 small">{{ message }}</div>
-                    {% endif %}
-                {% endfor %}
-            {% endif %}
+                {% if form.errors %}
+                    <div class="alert alert-danger p-2 small">
+                        {% for field in form %}
+                            {% for error in field.errors %}<div>{{ error }}</div>{% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
 
                 <div class="custom-input-group">
                     <label class="form-label fw-bold">Nombre de Usuario</label>
-                    <input type="text" name="username" class="form-control custom-input" placeholder="Ej: dani_v" required>
+                    <input type="text" name="username" class="form-control custom-input" placeholder="Ej: dani_v" value="{{ form.username.value|default:'' }}" minlength="3" required>
                 </div>
 
                 <div class="custom-input-group mt-3">
                     <label class="form-label fw-bold">Correo electrónico</label>
-                    <input type="email" name="email" class="form-control custom-input" placeholder="ejemplo@correo.com" required>
+                    <input type="email" name="email" class="form-control custom-input" placeholder="ejemplo@correo.com" value="{{ form.email.value|default:'' }}" required>
                 </div>
 
                 <div class="custom-input-group mt-3">

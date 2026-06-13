@@ -1,11 +1,11 @@
 import json
+from decimal import Decimal, InvalidOperation
 
+import mercadopago
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth import password_validation
-from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView
-from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -13,13 +13,14 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from . import carrito
 from .asistente import responder
-from .forms import CheckoutForm, ProductoForm
+from .forms import CheckoutForm, ProductoForm, RegistroForm
 from .models import Categoria, Compra, Producto
-from .servicios import StockInsuficiente, anular_compra, crear_pedido
+from .servicios import StockInsuficiente, anular_compra, crear_pedido, rechazar_compra
 
 
 @method_decorator(never_cache, name="dispatch")
@@ -78,7 +79,12 @@ def index(request):
     return render(
         request,
         "repuestosfullcars/home.html",
-        {"categorias_con_productos": categorias_con_productos},
+        {
+            "categorias_con_productos": categorias_con_productos,
+            "categorias": categorias,
+            "categoria_filtro": categoria_filtro,
+            "busqueda": busqueda,
+        },
     )
 
 
@@ -94,36 +100,13 @@ def producto_detalle(request, producto_id):
 
 @never_cache
 def registro(request):
-    if request.method == "POST":
-        username = request.POST.get("username", "").strip()
-        email = request.POST.get("email", "").strip().lower()
-        password = request.POST.get("password", "")
-        confirmacion = request.POST.get("confirmPassword", "")
-
-        if password != confirmacion:
-            messages.error(request, "Las contraseñas no coinciden.")
-            return render(request, "usuarios/registro.html")
-        if User.objects.filter(username__iexact=username).exists():
-            messages.error(request, "Este nombre de usuario ya existe.")
-            return render(request, "usuarios/registro.html")
-        if User.objects.filter(email__iexact=email).exists():
-            messages.error(request, "Este correo ya está asociado a una cuenta.")
-            return render(request, "usuarios/registro.html")
-
-        usuario = User(username=username, email=email)
-        try:
-            password_validation.validate_password(password, usuario)
-        except ValidationError as errores:
-            for error in errores:
-                messages.error(request, error)
-            return render(request, "usuarios/registro.html")
-
-        usuario.set_password(password)
-        usuario.save()
-        messages.success(request, f"¡Bienvenido {username}! Ya puedes iniciar sesión.")
+    form = RegistroForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        usuario = form.save()
+        messages.success(request, f"Bienvenido {usuario.username}. Ya puedes iniciar sesión.")
         return redirect("login")
 
-    return render(request, "usuarios/registro.html")
+    return render(request, "usuarios/registro.html", {"form": form})
 
 
 @require_POST
@@ -134,8 +117,16 @@ def agregar_carrito(request, producto_id):
     if producto.stock <= 0:
         messages.error(request, "Este producto no tiene stock disponible.")
     else:
-        carrito.agregar(request, producto)
-        messages.success(request, f"Agregaste '{producto.nombre_producto}' al carrito.")
+        try:
+            cantidad = max(1, int(request.POST.get("cantidad", "1")))
+        except ValueError:
+            cantidad = 1
+        cantidad = min(cantidad, producto.stock)
+        carrito.agregar(request, producto, cantidad)
+        messages.success(
+            request,
+            f"Agregaste {cantidad} unidad(es) de '{producto.nombre_producto}' al carrito.",
+        )
     return redirect(_retorno_seguro(request))
 
 
@@ -170,21 +161,53 @@ def checkout(request):
         messages.warning(request, "Tu carrito está vacío.")
         return redirect("carrito")
 
-    form = CheckoutForm(request.POST or None)
+    form = CheckoutForm(
+        request.POST or None,
+        initial={
+            "nombre_receptor": request.user.get_full_name() or request.user.username,
+        },
+    )
     if request.method == "POST" and form.is_valid():
+        mercado_pago_configurado = bool(
+            settings.MERCADOPAGO_ACCESS_TOKEN and settings.MERCADOPAGO_PUBLIC_KEY
+        )
+        if not settings.DEBUG and not mercado_pago_configurado:
+            messages.error(
+                request,
+                "El pago en línea no está disponible. Intenta nuevamente más tarde.",
+            )
+            return render(
+                request,
+                "repuestosfullcars/checkout.html",
+                {**resumen, "form": form},
+                status=503,
+            )
+
         try:
             compra = crear_pedido(
                 usuario=request.user,
                 direccion_envio=form.cleaned_data["direccion_envio"],
                 lineas=resumen["lineas"],
                 total=resumen["total"],
+                nombre_receptor=form.cleaned_data["nombre_receptor"],
+                telefono_contacto=form.cleaned_data["telefono_contacto"],
+                comuna=form.cleaned_data["comuna"],
+                ciudad=form.cleaned_data["ciudad"],
+                referencia_entrega=form.cleaned_data["referencia_entrega"],
             )
         except StockInsuficiente:
             messages.error(request, "El stock cambió mientras confirmabas. Revisa tu carrito.")
             return redirect("carrito")
 
-        # ✅ Esto va FUERA del except, al mismo nivel que el try
         carrito.vaciar(request)
+        if not mercado_pago_configurado:
+            compra.metodo_pago = "registro_local"
+            compra.save(update_fields=["metodo_pago", "fecha_actualizacion"])
+            messages.success(
+                request,
+                "Pedido registrado en modo local. Mercado Pago se activa al configurar sus claves.",
+            )
+            return redirect("compra_detalle", compra_id=compra.pk)
         return render(request, "repuestosfullcars/checkout_pago.html", {
             "compra": compra,
             "mp_public_key": settings.MERCADOPAGO_PUBLIC_KEY,
@@ -217,10 +240,12 @@ def compra_detalle(request, compra_id):
 def admin_productos(request):
     producto_edit = None
     categorias = Categoria.objects.filter(estado="activo").order_by("nombre_categoria")
+    busqueda = request.GET.get("q", "").strip()
     edit_id = request.GET.get("edit")
     if edit_id:
         producto_edit = get_object_or_404(Producto, pk=edit_id)
 
+    form = ProductoForm(instance=producto_edit)
     if request.method == "POST":
         producto_edit = get_object_or_404(Producto, pk=request.POST.get("producto_id")) if request.POST.get("producto_id") else None
         form = ProductoForm(request.POST, request.FILES, instance=producto_edit)
@@ -231,11 +256,30 @@ def admin_productos(request):
             return redirect("admin_productos")
         messages.error(request, "Revisa los datos: el precio y el stock no pueden ser negativos.")
 
-    productos = Producto.objects.select_related("categoria").order_by("-fecha_actualizacion")
+    inventario = Producto.objects.select_related("categoria").order_by("-fecha_actualizacion")
+    estadisticas = {
+        "total": inventario.count(),
+        "activos": inventario.filter(estado="activo").count(),
+        "stock_bajo": inventario.filter(estado="activo", stock__gt=0, stock__lte=5).count(),
+        "sin_stock": inventario.filter(estado="activo", stock=0).count(),
+    }
+    productos = inventario
+    if busqueda:
+        productos = productos.filter(
+            Q(nombre_producto__icontains=busqueda)
+            | Q(categoria__nombre_categoria__icontains=busqueda)
+        )
     return render(
         request,
         "repuestosfullcars/admin_productos.html",
-        {"productos": productos, "categorias": categorias, "producto_edit": producto_edit},
+        {
+            "productos": productos,
+            "categorias": categorias,
+            "producto_edit": producto_edit,
+            "form": form,
+            "busqueda": busqueda,
+            "estadisticas": estadisticas,
+        },
     )
 
 
@@ -290,7 +334,13 @@ def admin_compras(request):
         if accion == "anular":
             anular_compra(compra.pk, usuario=request.user)
             messages.success(request, f"Compra #{compra.pk} anulada.")
-        elif accion == "entregar" and compra.estado_compra == Compra.ESTADO_PENDIENTE:
+        elif accion == "entregar" and (
+            compra.estado_compra == Compra.ESTADO_PAGADA
+            or (
+                compra.estado_compra == Compra.ESTADO_PENDIENTE
+                and compra.metodo_pago == "registro_local"
+            )
+        ):
             compra.estado_compra = Compra.ESTADO_ENTREGADA
             compra.save(update_fields=["estado_compra", "fecha_actualizacion"])
             messages.success(request, f"Compra #{compra.pk} marcada como entregada.")
@@ -298,15 +348,54 @@ def admin_compras(request):
     compras = Compra.objects.select_related("usuario").prefetch_related("detalles").order_by("-fecha_compra")
     return render(request, "repuestosfullcars/admin_compras.html", {"compras": compras})
 
-# ── Mercado Pago ──────────────────────────────────────────────
-import mercadopago
-from django.conf import settings
-from django.views.decorators.csrf import csrf_exempt
+# Mercado Pago
+
+
+def _sincronizar_pago(payment_id):
+    if not payment_id or not settings.MERCADOPAGO_ACCESS_TOKEN:
+        return None
+
+    try:
+        sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+        resultado = sdk.payment().get(payment_id)
+    except Exception:
+        return None
+    if resultado.get("status") != 200:
+        return None
+
+    pago = resultado.get("response", {})
+    compra = Compra.objects.filter(pk=pago.get("external_reference")).first()
+    if not compra:
+        return None
+
+    try:
+        monto = Decimal(str(pago.get("transaction_amount")))
+    except (InvalidOperation, TypeError):
+        return None
+    if monto != compra.total:
+        return None
+
+    if pago.get("status") == "approved":
+        if compra.estado_compra == Compra.ESTADO_RECHAZADA:
+            return compra
+        compra.estado_compra = Compra.ESTADO_PAGADA
+        compra.metodo_pago = "mercado_pago"
+        compra.save(
+            update_fields=["estado_compra", "metodo_pago", "fecha_actualizacion"]
+        )
+    elif pago.get("status") in {"rejected", "cancelled"}:
+        compra = rechazar_compra(compra.pk)
+    return compra
 
 @require_POST
 def crear_preferencia_mp(request):
     if not request.user.is_authenticated:
         return JsonResponse({"error": "No autenticado"}, status=401)
+    if not settings.MERCADOPAGO_ACCESS_TOKEN:
+        return JsonResponse(
+            {"error": "Mercado Pago no está configurado en este ambiente."},
+            status=503,
+        )
 
     try:
         data = json.loads(request.body)
@@ -339,6 +428,7 @@ def crear_preferencia_mp(request):
                 "failure": f"{base_url}/pago/fallido/{compra.pk}/",
                 "pending": f"{base_url}/pago/pendiente/{compra.pk}/",
             },
+            "notification_url": f"{base_url}/webhook/mp/",
             "external_reference": str(compra.pk),
         }
 
@@ -348,15 +438,19 @@ def crear_preferencia_mp(request):
 
         resultado = sdk.preference().create(preference_data)
 
-        if resultado["status"] == 201:
+        if resultado.get("status") == 201:
+            respuesta = resultado.get("response", {})
             return JsonResponse({
-                "preference_id": resultado["response"]["id"],
-                "init_point": resultado["response"]["sandbox_init_point"],
+                "preference_id": respuesta.get("id"),
+                "init_point": respuesta.get("sandbox_init_point") or respuesta.get("init_point"),
             })
+        return JsonResponse(
+            {"error": "Mercado Pago no pudo crear la preferencia."},
+            status=400,
+        )
 
-    except Exception as e:
-        print(f"ERROR en crear_preferencia_mp: {e}")
-        return JsonResponse({"error": str(e)}, status=400)
+    except Exception:
+        return JsonResponse({"error": "No fue posible iniciar el pago."}, status=400)
 
 
 @csrf_exempt
@@ -365,35 +459,43 @@ def webhook_mp(request):
         try:
             data = json.loads(request.body)
             if data.get("type") == "payment":
-                payment_id = data["data"]["id"]
-                sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
-                pago = sdk.payment().get(payment_id)["response"]
-                compra_id = pago.get("external_reference")
-                if compra_id and pago["status"] == "approved":
-                    compra = Compra.objects.get(pk=compra_id)
-                    compra.estado_compra = Compra.ESTADO_PENDIENTE
-                    compra.save(update_fields=["estado_compra", "fecha_actualizacion"])
-        except Exception as e:
-            print(f"Webhook error: {e}")
+                _sincronizar_pago(data.get("data", {}).get("id"))
+        except (json.JSONDecodeError, KeyError, TypeError):
+            return JsonResponse({"status": "invalid"}, status=400)
     return JsonResponse({"status": "ok"})
 
 
 @never_cache
 def pago_exitoso(request, compra_id):
+    if not request.user.is_authenticated:
+        return redirect("login")
     compra = get_object_or_404(Compra, pk=compra_id, usuario=request.user)
-    messages.success(request, f"¡Pago del pedido #{compra.pk} aprobado!")
+    compra_actualizada = _sincronizar_pago(request.GET.get("payment_id"))
+    if compra_actualizada and compra_actualizada.estado_compra == Compra.ESTADO_PAGADA:
+        messages.success(request, f"Pago del pedido #{compra.pk} aprobado.")
+    else:
+        messages.info(request, "El pago está siendo confirmado por Mercado Pago.")
     return redirect("compra_detalle", compra_id=compra.pk)
 
 
 @never_cache
 def pago_fallido(request, compra_id):
+    if not request.user.is_authenticated:
+        return redirect("login")
     compra = get_object_or_404(Compra, pk=compra_id, usuario=request.user)
-    messages.error(request, f"El pago del pedido #{compra.pk} falló. Intenta nuevamente.")
+    compra_actualizada = _sincronizar_pago(request.GET.get("payment_id"))
+    if compra_actualizada and compra_actualizada.estado_compra == Compra.ESTADO_RECHAZADA:
+        messages.error(request, f"El pago del pedido #{compra.pk} fue rechazado.")
+    else:
+        messages.warning(request, "Mercado Pago no confirmó el pago.")
     return redirect("compra_detalle", compra_id=compra.pk)
 
 
 @never_cache
 def pago_pendiente(request, compra_id):
+    if not request.user.is_authenticated:
+        return redirect("login")
     compra = get_object_or_404(Compra, pk=compra_id, usuario=request.user)
+    _sincronizar_pago(request.GET.get("payment_id"))
     messages.warning(request, f"Pedido #{compra.pk} pendiente de confirmación.")
     return redirect("compra_detalle", compra_id=compra.pk)

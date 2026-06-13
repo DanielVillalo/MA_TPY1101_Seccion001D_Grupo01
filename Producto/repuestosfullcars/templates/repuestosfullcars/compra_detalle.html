@@ -3,27 +3,83 @@
 {% block title %}Pedido #{{ compra.id }} - Full Cars{% endblock %}
 
 {% block content %}
-<div class="custom-card p-4 mt-4">
+<section class="fc-page">
+  <header class="fc-page-header">
+    <div>
+      <p class="fc-eyebrow">Comprobante de compra</p>
+      <h1 class="fc-page-title">Pedido #{{ compra.id }}</h1>
+      <p class="fc-page-lead">Registrado el {{ compra.fecha_compra|date:"d/m/Y H:i" }}</p>
+    </div>
+    <div>
+      {% if compra.estado_compra == 'pagada' or compra.estado_compra == 'entregada' %}
+        <span class="fc-stock fc-stock-ok">{{ compra.get_estado_compra_display }}</span>
+      {% elif compra.estado_compra == 'rechazada' or compra.estado_compra == 'anulada' %}
+        <span class="fc-stock fc-stock-none">{{ compra.get_estado_compra_display }}</span>
+      {% else %}
+        <span class="fc-stock fc-stock-low">{{ compra.get_estado_compra_display }}</span>
+      {% endif %}
+    </div>
+  </header>
+
+  {% include 'repuestosfullcars/checkout_pasos.html' with paso='confirmacion' %}
+
   {% if messages %}
-    {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+    {% endfor %}
   {% endif %}
-  <div class="d-flex justify-content-between align-items-center">
-    <h3><i class="fas fa-box me-2" style="color:#02807c;"></i>Pedido #{{ compra.id }}</h3>
-    <span class="badge bg-secondary">{{ compra.get_estado_compra_display }}</span>
+
+  {% if compra.metodo_pago == 'registro_local' %}
+    <div class="alert alert-info">
+      <i class="fas fa-flask me-2"></i>Pedido creado en modo local para pruebas académicas.
+    </div>
+  {% endif %}
+
+  <div class="fc-checkout-grid">
+    <div class="fc-panel">
+      <div class="fc-panel-body">
+        <h2 class="fc-section-title">Productos del pedido</h2>
+        <div class="table-responsive">
+          <table class="table fc-table">
+            <thead>
+              <tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th class="text-end">Subtotal</th></tr>
+            </thead>
+            <tbody>
+              {% for detalle in compra.detalles.all %}
+                <tr>
+                  <td><strong>{{ detalle.nombre_producto }}</strong></td>
+                  <td>{{ detalle.cantidad }}</td>
+                  <td>${{ detalle.precio_unitario|floatformat:"0" }}</td>
+                  <td class="text-end"><strong>${{ detalle.subtotal|floatformat:"0" }}</strong></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <aside class="fc-panel fc-summary-card">
+      <div class="fc-panel-body">
+        <h2 class="fc-section-title">Datos de entrega</h2>
+        <div class="fc-summary-line">
+          <span>Recibe</span><strong>{{ compra.nombre_receptor|default:compra.usuario.username }}</strong>
+        </div>
+        {% if compra.telefono_contacto %}
+          <div class="fc-summary-line"><span>Teléfono</span><strong>{{ compra.telefono_contacto }}</strong></div>
+        {% endif %}
+        <div class="fc-address-box mt-3">
+          {{ compra.direccion_envio }}
+          {% if compra.comuna or compra.ciudad %}<br>{{ compra.comuna }}{% if compra.comuna and compra.ciudad %}, {% endif %}{{ compra.ciudad }}{% endif %}
+          {% if compra.referencia_entrega %}<br><span class="d-block mt-2">{{ compra.referencia_entrega }}</span>{% endif %}
+        </div>
+        <div class="fc-summary-total">
+          <strong>Total pagado</strong>
+          <strong>${{ compra.total|floatformat:"0" }}</strong>
+        </div>
+        <a href="{% url 'mis_compras' %}" class="fc-button fc-button-secondary w-100 mt-3">Volver a mis pedidos</a>
+      </div>
+    </aside>
   </div>
-  <p class="text-muted">Creado el {{ compra.fecha_compra|date:"d/m/Y H:i" }}</p>
-  <p><strong>Dirección de envío:</strong> {{ compra.direccion_envio }}</p>
-  <div class="table-responsive mt-3">
-    <table class="table align-middle">
-      <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
-      <tbody>
-      {% for detalle in compra.detalles.all %}
-        <tr><td>{{ detalle.nombre_producto }}</td><td>{{ detalle.cantidad }}</td><td>${{ detalle.precio_unitario }}</td><td>${{ detalle.subtotal }}</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="text-end"><h4 style="color:#02807c;">Total: ${{ compra.total }}</h4></div>
-  <a href="{% url 'mis_compras' %}" class="btn btn-outline-secondary">Volver a mis pedidos</a>
-</div>
+</section>
 {% endblock %}

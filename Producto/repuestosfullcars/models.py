@@ -45,13 +45,25 @@ class Producto(models.Model):
     def __str__(self):
         return self.nombre_producto
 
+    @property
+    def nivel_stock(self):
+        if self.stock == 0:
+            return "sin_stock"
+        if self.stock <= 5:
+            return "bajo"
+        return "disponible"
+
 
 class Compra(models.Model):
     ESTADO_PENDIENTE = "pendiente"
+    ESTADO_PAGADA = "pagada"
+    ESTADO_RECHAZADA = "rechazada"
     ESTADO_ANULADA = "anulada"
     ESTADO_ENTREGADA = "entregada"
     ESTADOS = [
-        (ESTADO_PENDIENTE, "Pendiente"),
+        (ESTADO_PENDIENTE, "Pendiente de pago"),
+        (ESTADO_PAGADA, "Pagada"),
+        (ESTADO_RECHAZADA, "Pago rechazado"),
         (ESTADO_ANULADA, "Anulada"),
         (ESTADO_ENTREGADA, "Entregada"),
     ]
@@ -68,7 +80,12 @@ class Compra(models.Model):
         max_length=20, choices=ESTADOS, default=ESTADO_PENDIENTE
     )
     metodo_pago = models.CharField(max_length=50, default="sin_pago_en_linea")
+    nombre_receptor = models.CharField(max_length=150, blank=True, default="")
+    telefono_contacto = models.CharField(max_length=25, blank=True, default="")
+    comuna = models.CharField(max_length=100, blank=True, default="")
+    ciudad = models.CharField(max_length=100, blank=True, default="")
     direccion_envio = models.TextField()
+    referencia_entrega = models.CharField(max_length=250, blank=True, default="")
     stock_descontado = models.BooleanField(default=False)
 
     class Meta:

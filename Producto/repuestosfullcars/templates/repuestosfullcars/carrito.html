@@ -3,46 +3,104 @@
 {% block title %}Carrito - Full Cars{% endblock %}
 
 {% block content %}
-<div class="custom-card p-4 mt-4">
-  <h3><i class="fas fa-shopping-cart me-2" style="color:#02807c;"></i>Carrito</h3>
-  {% if messages %}
-    {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }} mt-3">{{ message }}</div>{% endfor %}
-  {% endif %}
-  {% if lineas %}
-    <div class="table-responsive mt-3">
-      <table class="table align-middle">
-        <thead><tr><th>Producto</th><th>Precio</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead>
-        <tbody>
-        {% for linea in lineas %}
-          <tr>
-            <td><a href="{% url 'producto_detalle' linea.producto.id %}">{{ linea.producto.nombre_producto }}</a></td>
-            <td>${{ linea.producto.precio }}</td>
-            <td>
-              <form method="POST" action="{% url 'actualizar_carrito' linea.producto.id %}" class="d-flex gap-2">
-                {% csrf_token %}
-                <input type="number" min="0" max="{{ linea.producto.stock }}" name="cantidad" value="{{ linea.cantidad }}" class="form-control form-control-sm" style="width:80px;">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">Actualizar</button>
-              </form>
-            </td>
-            <td>${{ linea.subtotal }}</td>
-            <td>
-              <form method="POST" action="{% url 'quitar_carrito' linea.producto.id %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-              </form>
-            </td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+<section class="fc-page">
+  <header class="fc-page-header">
+    <div>
+      <p class="fc-eyebrow">Tu compra</p>
+      <h1 class="fc-page-title">Carrito de productos</h1>
+      <p class="fc-page-lead">Revisa las cantidades antes de continuar con la entrega.</p>
     </div>
-    <div class="text-end">
-      <h4>Total: <span style="color:#02807c;">${{ total }}</span></h4>
-      <a href="{% url 'checkout' %}" class="btn btn-custom px-4 py-2">Confirmar pedido</a>
+  </header>
+
+  {% include 'repuestosfullcars/checkout_pasos.html' with paso='carrito' %}
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if lineas %}
+    <div class="fc-cart-grid">
+      <div class="fc-panel">
+        <div class="fc-panel-body">
+          <h2 class="fc-section-title">Productos seleccionados</h2>
+          {% for linea in lineas %}
+            <article class="fc-cart-item">
+              {% if linea.producto.imagen_url %}
+                <img src="{{ linea.producto.imagen_url.url }}" alt="" class="fc-product-thumb">
+              {% else %}
+                <span class="fc-product-thumb"><i class="fas fa-wrench"></i></span>
+              {% endif %}
+
+              <div class="fc-cart-info">
+                <a href="{% url 'producto_detalle' linea.producto.id %}" class="fc-product-name">
+                  {{ linea.producto.nombre_producto }}
+                </a>
+                <span class="fc-product-meta">${{ linea.producto.precio|floatformat:"0" }} por unidad</span>
+              </div>
+
+              <div class="fc-cart-actions">
+                <form method="POST" action="{% url 'actualizar_carrito' linea.producto.id %}" class="d-flex gap-2">
+                  {% csrf_token %}
+                  <input
+                    type="number"
+                    min="0"
+                    max="{{ linea.producto.stock }}"
+                    name="cantidad"
+                    value="{{ linea.cantidad }}"
+                    class="form-control form-control-sm"
+                    aria-label="Cantidad de {{ linea.producto.nombre_producto }}"
+                  >
+                  <button type="submit" class="btn btn-sm btn-outline-secondary" title="Actualizar cantidad">
+                    <i class="fas fa-rotate"></i>
+                  </button>
+                </form>
+                <form method="POST" action="{% url 'quitar_carrito' linea.producto.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="Quitar producto">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+              </div>
+
+              <strong>${{ linea.subtotal|floatformat:"0" }}</strong>
+            </article>
+          {% endfor %}
+        </div>
+      </div>
+
+      <aside class="fc-panel fc-summary-card">
+        <div class="fc-panel-body">
+          <h2 class="fc-section-title">Resumen</h2>
+          <div class="fc-summary-line">
+            <span>Productos</span>
+            <strong>{{ cantidad_total }} unidad(es)</strong>
+          </div>
+          <div class="fc-summary-line">
+            <span>Despacho</span>
+            <strong>Por coordinar</strong>
+          </div>
+          <div class="fc-summary-total">
+            <strong>Total</strong>
+            <strong>${{ total|floatformat:"0" }}</strong>
+          </div>
+          <a href="{% url 'checkout' %}" class="fc-button w-100 mt-4">
+            Continuar con la entrega<i class="fas fa-arrow-right"></i>
+          </a>
+          <a href="{% url 'index' %}" class="fc-button fc-button-secondary w-100 mt-2">Seguir comprando</a>
+        </div>
+      </aside>
     </div>
   {% else %}
-    <p class="text-muted mt-3">Tu carrito está vacío.</p>
-    <a href="{% url 'index' %}" class="btn btn-custom px-4 py-2">Ver repuestos</a>
+    <div class="fc-panel">
+      <div class="fc-empty">
+        <i class="fas fa-cart-shopping"></i>
+        <h2 class="fc-section-title">Tu carrito está vacío</h2>
+        <p>Explora el catálogo y agrega los repuestos que necesitas.</p>
+        <a href="{% url 'index' %}" class="fc-button">Ver repuestos</a>
+      </div>
+    </div>
   {% endif %}
-</div>
+</section>
 {% endblock %}

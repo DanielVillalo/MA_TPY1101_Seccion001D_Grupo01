@@ -1,55 +1,103 @@
 {% extends 'base.html' %}
-{% block title %}Pagar pedido - Full Cars{% endblock %}
+
+{% block title %}Revisar y pagar - Full Cars{% endblock %}
 
 {% block content %}
-<div class="row g-4 mt-2">
-  <div class="col-md-7">
-    <div class="custom-card p-4">
-      <h3><i class="fas fa-credit-card me-2" style="color:#02807c;"></i>Pagar pedido</h3>
-      <p class="text-muted">Haz clic en el botón para completar tu pago con Mercado Pago.</p>
-      <div id="btn-container">
-        <p class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Cargando...</p>
+<section class="fc-page">
+  <header class="fc-page-header">
+    <div>
+      <p class="fc-eyebrow">Paso 3 de 4</p>
+      <h1 class="fc-page-title">Revisa y paga tu pedido</h1>
+      <p class="fc-page-lead">Comprueba los datos antes de continuar a Mercado Pago.</p>
+    </div>
+  </header>
+
+  {% include 'repuestosfullcars/checkout_pasos.html' with paso='pago' %}
+
+  <div class="fc-checkout-grid">
+    <div class="fc-panel">
+      <div class="fc-panel-body">
+        <div class="fc-payment-icon"><i class="fas fa-credit-card"></i></div>
+        <p class="fc-eyebrow">Pedido #{{ compra.pk }}</p>
+        <h2 class="fc-section-title mb-2">Pago seguro con Mercado Pago</h2>
+        <p class="fc-page-lead mb-4">
+          Serás redirigido a la plataforma de pago. Al finalizar volverás a Full Cars para revisar el estado del pedido.
+        </p>
+
+        <div class="fc-address-box">
+          <strong class="d-block text-dark mb-1"><i class="fas fa-location-dot me-2"></i>Entrega</strong>
+          {{ compra.nombre_receptor }} · {{ compra.telefono_contacto }}<br>
+          {{ compra.direccion_envio }}, {{ compra.comuna }}, {{ compra.ciudad }}
+          {% if compra.referencia_entrega %}<br>{{ compra.referencia_entrega }}{% endif %}
+        </div>
+
+        <div id="btn-container" class="mt-4">
+          <p class="text-muted mb-0"><i class="fas fa-spinner fa-spin me-2"></i>Preparando el pago...</p>
+        </div>
+        <div class="fc-notice">
+          <i class="fas fa-lock me-1"></i>
+          Full Cars no almacena los datos de tu tarjeta. El pago se procesa directamente en Mercado Pago.
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-md-5">
-    <div class="custom-card p-4">
-      <h5>Resumen del pedido #{{ compra.pk }}</h5>
-      {% for detalle in compra.detalles.all %}
-        <div class="d-flex justify-content-between border-bottom py-2">
-          <span>{{ detalle.cantidad }} x {{ detalle.nombre_producto }}</span>
-          <span>${{ detalle.precio_unitario }}</span>
+
+    <aside class="fc-panel fc-summary-card">
+      <div class="fc-panel-body">
+        <h2 class="fc-section-title">Detalle de compra</h2>
+        {% for detalle in compra.detalles.all %}
+          <div class="fc-summary-line">
+            <span>{{ detalle.cantidad }} × {{ detalle.nombre_producto }}</span>
+            <strong>${{ detalle.subtotal|floatformat:"0" }}</strong>
+          </div>
+        {% endfor %}
+        <div class="fc-summary-total">
+          <strong>Total</strong>
+          <strong>${{ compra.total|floatformat:"0" }}</strong>
         </div>
-      {% endfor %}
-      <h5 class="text-end mt-3" style="color:#02807c;">Total: ${{ compra.total }}</h5>
-    </div>
+        <a href="{% url 'compra_detalle' compra.pk %}" class="fc-button fc-button-secondary w-100 mt-3">
+          Ver pedido registrado
+        </a>
+      </div>
+    </aside>
   </div>
-</div>
+</section>
 
 <script>
-  fetch("/api/preferencia-mp/", {
+  fetch("{% url 'crear_preferencia_mp' %}", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-CSRFToken": "{{ csrf_token }}"
     },
-    body: JSON.stringify({ compra_id: parseInt("{{ compra.pk }}") })
+    body: JSON.stringify({ compra_id: Number("{{ compra.pk }}") })
   })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.init_point) {
-      document.getElementById("btn-container").innerHTML =
-        '<a href="' + data.init_point + '" class="btn btn-custom px-4 py-2">' +
-        '<i class="fas fa-credit-card me-2"></i>Pagar con Mercado Pago</a>';
-    } else {
-      document.getElementById("btn-container").innerHTML =
-        '<p class="text-danger">Error al cargar el pago. Intenta nuevamente.</p>';
+  .then(function(response) {
+    return response.json().then(function(data) {
+      return { ok: response.ok, data: data };
+    });
+  })
+  .then(function(result) {
+    const container = document.getElementById("btn-container");
+    container.replaceChildren();
+
+    if (result.ok && result.data.init_point) {
+      const link = document.createElement("a");
+      link.href = result.data.init_point;
+      link.className = "fc-button";
+      link.innerHTML = '<i class="fas fa-credit-card"></i>Pagar con Mercado Pago';
+      container.appendChild(link);
+      return;
     }
+
+    const error = document.createElement("p");
+    error.className = "text-danger mb-0";
+    error.textContent = result.data.error || "No fue posible iniciar el pago.";
+    container.appendChild(error);
   })
-  .catch(function(err) {
-    console.error("Error MP:", err);
-    document.getElementById("btn-container").innerHTML =
-      '<p class="text-danger">Error de conexión. Intenta nuevamente.</p>';
+  .catch(function() {
+    const container = document.getElementById("btn-container");
+    container.textContent = "No fue posible conectar con el servicio de pago.";
+    container.className = "text-danger mt-4";
   });
 </script>
 {% endblock %}
